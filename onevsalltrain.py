@@ -14,8 +14,8 @@ K.set_image_data_format('channels_last')
 print("Keras backend:", K.backend(), "Image data format:", K.image_data_format())
 
 # --- Parameters ---
-batch_size = 64
-epochs = 10
+batch_size = 128
+epochs = 40
 height, width = 1500, 1500
 input_shape = (height, width, 1)
 PATH_PREFIX = "datasets/"
@@ -118,7 +118,7 @@ val_metrics = model.evaluate(x_val, y_val, verbose=1)
 print(f"\n✅ Final validation results:\n{dict(zip(model.metrics_names, val_metrics))}")
 
 # --- Save model ---
-model.save("multiclass_combined_model.h5")
+model.save("multiclass_combined_model28_40.h5")
 print("\n💾 Saved as multiclass_combined_model.h5")
 
 # --- Plot accuracy/loss ---
@@ -126,11 +126,11 @@ plt.figure(figsize=(10, 6))
 plt.plot(history.history['accuracy'], label='Train Accuracy')
 plt.plot(history.history['val_accuracy'], label='Val Accuracy')
 plt.legend(); plt.grid(True); plt.title("Training Accuracy")
-plt.savefig("combined_accuracy.png")
+plt.savefig("combined_accuracy_128_40.png")
 
 plt.figure(figsize=(10, 6))
 plt.plot(history.history['loss'], label='Train Loss')
 plt.plot(history.history['val_loss'], label='Val Loss')
 plt.legend(); plt.grid(True); plt.title("Training Loss")
-plt.savefig("combined_loss.png")
+plt.savefig("combined_loss_128_40.png")
 plt.show()
