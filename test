@@ -1,0 +1,144 @@
+1. Imports and Setup
+import numpy as np
+import os
+import random
+import tensorflow as tf
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Dense, Dropout, Flatten, Conv2D, MaxPooling2D, Activation, BatchNormalization
+from tensorflow.keras.utils import to_categorical
+from tensorflow.keras.callbacks import TensorBoard, ModelCheckpoint
+from tensorflow.keras import backend as K
+from tensorflow.keras.metrics import top_k_categorical_accuracy
+
+import matplotlib.pyplot as plt
+import matplotlib.cm as cm
+import numpy.ma as ma
+import pylab as pl
+from mpl_toolkits.axes_grid1 import make_axes_locatable
+from sklearn.metrics import confusion_matrix
+import itertools
+
+# Set data format
+K.set_image_data_format('channels_first')
+print(K.backend(), K.image_data_format())
+2. Parameters and Data Loading
+batch_size = 128
+samples_per_epoch = 10
+num_classes = 5
+epochs = 40
+class_names = ["voip", "video", "file transfer", "chat", "browsing"]
+
+height, width = 1500, 1500
+input_shape = (1, height, width)
+
+MODEL_NAME = "overlap_multiclass_reg_non_bn"
+PATH_PREFIX = "D:/TS/Internet Traffic Classification/datasets/overlap_multiclass_reg/overlap_multiclass_"
+
+# Load data
+x_train = np.load(PATH_PREFIX + "reg_x_train.npy")
+y_train_true = np.load(PATH_PREFIX + "reg_y_train.npy")
+x_val = np.load(PATH_PREFIX + "reg_x_val.npy")
+y_val_true = np.load(PATH_PREFIX + "reg_y_val.npy")
+
+print(x_train.shape, y_train_true.shape)
+print(x_val.shape, y_val_true.shape)
+
+# Shuffle data
+def shuffle_data(x, y):
+    s = np.arange(x.shape[0])
+    np.random.shuffle(s)
+    return x[s], y[s]
+
+x_train, y_train_true = shuffle_data(x_train, y_train_true)
+
+# Convert labels to categorical
+y_train = to_categorical(y_train_true, num_classes)
+y_val = to_categorical(y_val_true, num_classes)
+3. Model Definition
+def precision(y_true, y_pred):
+    true_positives = K.sum(K.round(K.clip(y_true * y_pred, 0, 1)))
+    predicted_positives = K.sum(K.round(K.clip(y_pred, 0, 1)))
+    return true_positives / (predicted_positives + K.epsilon())
+
+def recall(y_true, y_pred):
+    true_positives = K.sum(K.round(K.clip(y_true * y_pred, 0, 1)))
+    possible_positives = K.sum(K.round(K.clip(y_true, 0, 1)))
+    return true_positives / (possible_positives + K.epsilon())
+
+def f1_score(y_true, y_pred):
+    prec = precision(y_true, y_pred)
+    rec = recall(y_true, y_pred)
+    return 2*((prec*rec)/(prec+rec))
+
+def top_2_categorical_accuracy(y_true, y_pred):
+    return top_k_categorical_accuracy(y_true, y_pred, k=2)
+
+# Build model
+model = Sequential()
+model.add(Conv2D(10, kernel_size=(10,10), strides=5, padding="same", input_shape=input_shape))
+model.add(Activation('relu'))
+model.add(MaxPooling2D(pool_size=(2,2)))
+model.add(Conv2D(20, (10,10), strides=5, padding="same"))
+model.add(Activation('relu'))
+model.add(Dropout(0.25))
+model.add(MaxPooling2D(pool_size=(2,2)))
+model.add(Flatten())
+model.add(Dense(64, activation='relu'))
+model.add(Dropout(0.5))
+model.add(Dense(num_classes, activation='softmax'))
+
+model.compile(loss='categorical_crossentropy', optimizer='adam',
+              metrics=['accuracy', top_2_categorical_accuracy, f1_score, precision, recall])
+
+model.summary()
+4. Training
+tensorboard = TensorBoard(log_dir='./Graph', histogram_freq=1, write_graph=True, write_images=True)
+checkpointer_loss = ModelCheckpoint(filepath=MODEL_NAME + '_loss.hdf5', verbose=1, save_best_only=True, save_weights_only=True)
+checkpointer_acc = ModelCheckpoint(filepath=MODEL_NAME + '_acc.hdf5', verbose=1, save_best_only=True, save_weights_only=True)
+
+def generator(features, labels, batch_size):
+    index = 0
+    while True:
+        index += batch_size
+        if index >= len(features):
+            batch_features = np.append(features[index-batch_size:len(features)], features[0:index-len(features)], axis=0)
+            batch_labels = np.append(labels[index-batch_size:len(features)], labels[0:index-len(features)], axis=0)
+            index -= len(features)
+            yield batch_features, batch_labels
+        else:
+            yield features[index-batch_size:index], labels[index-batch_size:index]
+
+history = model.fit(generator(x_train, y_train, batch_size),
+                    epochs=epochs,
+                    steps_per_epoch=samples_per_epoch,
+                    verbose=1,
+                    callbacks=[tensorboard, checkpointer_loss, checkpointer_acc],
+                    validation_data=(x_val, y_val))
+5. Confusion Matrix
+y_val_prediction = np.argmax(model.predict(x_val), axis=1)
+
+def plot_confusion_matrix(cm, classes, normalize=False, title='Confusion matrix', fname='Confusion matrix', cmap=plt.cm.Blues):
+    if normalize:
+        cm = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis]
+    plt.imshow(cm, interpolation='nearest', cmap=cmap)
+    plt.title(title)
+    plt.colorbar()
+    tick_marks = np.arange(len(classes))
+    plt.xticks(tick_marks, classes, rotation=45)
+    plt.yticks(tick_marks, classes)
+
+    fmt = '.1f' if normalize else 'd'
+    thresh = cm.max() / 2.
+    for i, j in itertools.product(range(cm.shape[0]), range(cm.shape[1])):
+        plt.text(j, i, format(cm[i, j], fmt) if not normalize else f"{cm[i,j]*100:.1f}%",
+                 horizontalalignment="center",
+                 color="white" if cm[i, j] > thresh else "black")
+
+    plt.ylabel('True label')
+    plt.xlabel('Predicted label')
+    plt.savefig(fname, bbox_inches='tight', pad_inches=1)
+    plt.show()
+
+cnf_matrix = confusion_matrix(y_val_true, y_val_prediction)
+plot_confusion_matrix(cnf_matrix, classes=class_names, normalize=False, fname=MODEL_NAME+"_Confusion_matrix")
+plot_confusion_matrix(cnf_matrix, classes=class_names, normalize=True, fname=MODEL_NAME+"_Normalized_confusion_matrix")

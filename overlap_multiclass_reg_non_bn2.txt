@@ -1,0 +1,1110 @@
+{
+ "cells": [
+  {
+   "cell_type": "code",
+   "metadata": {
+    "scrolled": true,
+    "ExecuteTime": {
+     "end_time": "2025-10-14T13:07:23.757016Z",
+     "start_time": "2025-10-14T13:07:23.754924Z"
+    }
+   },
+   "source": "",
+   "outputs": [],
+   "execution_count": null
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "\n",
+    "import sys\n",
+    "\n",
+    "print(sys.executable)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "### Import Libraries"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "metadata": {
+    "ExecuteTime": {
+     "end_time": "2025-10-14T13:34:51.098618Z",
+     "start_time": "2025-10-14T13:34:51.094208Z"
+    }
+   },
+   "source": [
+    "import numpy as np\n",
+    "import os\n",
+    "import random\n",
+    "import tensorflow as tf\n",
+    "from tensorflow.keras.models import Sequential\n",
+    "from tensorflow.keras.layers import Dense, Dropout, Flatten, Conv2D, MaxPooling2D, Activation, BatchNormalization\n",
+    "from tensorflow.keras.utils import to_categorical\n",
+    "from tensorflow.keras.callbacks import TensorBoard, ModelCheckpoint\n",
+    "from tensorflow.keras import backend as K\n",
+    "from tensorflow.keras.metrics import top_k_categorical_accuracy\n",
+    "\n",
+    "import matplotlib.pyplot as plt\n",
+    "import matplotlib.cm as cm\n",
+    "import numpy.ma as ma\n",
+    "import pylab as pl\n",
+    "from mpl_toolkits.axes_grid1 import make_axes_locatable\n",
+    "from sklearn.metrics import confusion_matrix\n",
+    "import itertools\n",
+    "\n",
+    "# Set data format\n",
+    "K.set_image_data_format('channels_first')\n",
+    "print(K.backend(), K.image_data_format())\n"
+   ],
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "tensorflow channels_first\n"
+     ]
+    }
+   ],
+   "execution_count": 10
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "### Define Parameters"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "metadata": {
+    "ExecuteTime": {
+     "end_time": "2025-10-14T13:46:58.737414Z",
+     "start_time": "2025-10-14T13:46:51.108959Z"
+    }
+   },
+   "source": [
+    "batch_size = 128\n",
+    "samples_per_epoch = 10\n",
+    "num_classes = 5\n",
+    "epochs = 40\n",
+    "class_names = [\"voip\", \"video\", \"file transfer\", \"chat\", \"browsing\"]\n",
+    "\n",
+    "height, width = 1500, 1500\n",
+    "input_shape = (1, height, width)\n",
+    "\n",
+    "MODEL_NAME = \"overlap_multiclass_reg_non_bn\"\n",
+    "PATH_PREFIX = \"datasets/\"\n",
+    "dataset_file = os.path.join(PATH_PREFIX, \"file_vs_all_reg.npz\")\n",
+    "dataset = np.load(dataset_file)\n",
+    "\n",
+    "x_train = dataset['x_train']\n",
+    "y_train_true = dataset['y_train']\n",
+    "x_val = dataset['x_val']\n",
+    "y_val_true = dataset['y_val']\n",
+    "\n",
+    "print(x_train.shape, y_train_true.shape)\n",
+    "print(x_val.shape, y_val_true.shape)\n",
+    "\n",
+    "# Shuffle data\n",
+    "def shuffle_data(x, y):\n",
+    "    s = np.arange(x.shape[0])\n",
+    "    np.random.shuffle(s)\n",
+    "    return x[s], y[s]\n",
+    "\n",
+    "x_train, y_train_true = shuffle_data(x_train, y_train_true)\n",
+    "\n",
+    "# Convert labels to categorical\n",
+    "y_train = to_categorical(y_train_true, num_classes)\n",
+    "y_val = to_categorical(y_val_true, num_classes)\n"
+   ],
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "(1988, 1, 1500, 1500) (1988,)\n",
+      "(221, 1, 1500, 1500) (221,)\n"
+     ]
+    }
+   ],
+   "execution_count": 14
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "### Import Train and Validation Data"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "metadata": {
+    "ExecuteTime": {
+     "end_time": "2025-10-14T13:47:22.005747Z",
+     "start_time": "2025-10-14T13:47:18.695104Z"
+    }
+   },
+   "source": [
+    "\n",
+    "\n",
+    "# Shuffle data\n",
+    "def shuffle_data(x, y):\n",
+    "    s = np.arange(x.shape[0])\n",
+    "    np.random.shuffle(s)\n",
+    "    return x[s], y[s]\n",
+    "\n",
+    "x_train, y_train_true = shuffle_data(x_train, y_train_true)\n",
+    "\n",
+    "# Convert labels to categorical\n",
+    "y_train = to_categorical(y_train_true, num_classes)\n",
+    "y_val = to_categorical(y_val_true, num_classes)\n"
+   ],
+   "outputs": [],
+   "execution_count": 16
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "### Shuffle Data"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "metadata": {
+    "ExecuteTime": {
+     "end_time": "2025-10-14T13:47:27.861999Z",
+     "start_time": "2025-10-14T13:47:24.631108Z"
+    }
+   },
+   "source": [
+    "def shuffle_data(x, y):\n",
+    "    s = np.arange(x.shape[0])\n",
+    "    np.random.shuffle(s)\n",
+    "    x = x[s]\n",
+    "    y = y[s]\n",
+    "    print (x.shape, y.shape)\n",
+    "    return x, y\n",
+    "\n",
+    "x_train, y_train_true = shuffle_data(x_train, y_train_true)\n",
+    "\n",
+    "print(y_train_true[0:10])"
+   ],
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "(1988, 1, 1500, 1500) (1988,)\n",
+      "[1. 0. 1. 0. 1. 1. 0. 1. 1. 1.]\n"
+     ]
+    }
+   ],
+   "execution_count": 17
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "### convert class vectors to binary class matrices"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "metadata": {
+    "ExecuteTime": {
+     "end_time": "2025-10-14T13:47:30.649002Z",
+     "start_time": "2025-10-14T13:47:30.642421Z"
+    }
+   },
+   "source": [
+    "y_train = to_categorical(y_train_true, num_classes)\n",
+    "y_val =to_categorical(y_val_true, num_classes)\n",
+    "print(y_train[0:10])\n",
+    "print (y_val[0:10])\n",
+    "print(y_train.shape, y_val.shape)"
+   ],
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "[[0. 1. 0. 0. 0.]\n",
+      " [1. 0. 0. 0. 0.]\n",
+      " [0. 1. 0. 0. 0.]\n",
+      " [1. 0. 0. 0. 0.]\n",
+      " [0. 1. 0. 0. 0.]\n",
+      " [0. 1. 0. 0. 0.]\n",
+      " [1. 0. 0. 0. 0.]\n",
+      " [0. 1. 0. 0. 0.]\n",
+      " [0. 1. 0. 0. 0.]\n",
+      " [0. 1. 0. 0. 0.]]\n",
+      "[[0. 1. 0. 0. 0.]\n",
+      " [0. 1. 0. 0. 0.]\n",
+      " [1. 0. 0. 0. 0.]\n",
+      " [0. 1. 0. 0. 0.]\n",
+      " [0. 1. 0. 0. 0.]\n",
+      " [0. 1. 0. 0. 0.]\n",
+      " [0. 1. 0. 0. 0.]\n",
+      " [0. 1. 0. 0. 0.]\n",
+      " [0. 1. 0. 0. 0.]\n",
+      " [0. 1. 0. 0. 0.]]\n",
+      "(1988, 5) (221, 5)\n"
+     ]
+    }
+   ],
+   "execution_count": 18
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "### Define and Compile model"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "metadata": {
+    "ExecuteTime": {
+     "end_time": "2025-10-14T13:59:01.187887Z",
+     "start_time": "2025-10-14T13:59:01.152398Z"
+    }
+   },
+   "source": [
+    "def precision(y_true, y_pred):\n",
+    "    \"\"\"Precision metric.\n",
+    "\n",
+    "    Only computes a batch-wise average of precision.\n",
+    "\n",
+    "    Computes the precision, a metric for multi-label classification of\n",
+    "    how many selected items are relevant.\n",
+    "    \"\"\"\n",
+    "    true_positives = K.sum(K.round(K.clip(y_true * y_pred, 0, 1)))\n",
+    "    predicted_positives = K.sum(K.round(K.clip(y_pred, 0, 1)))\n",
+    "    precision = true_positives / (predicted_positives + K.epsilon())\n",
+    "    return precision\n",
+    "\n",
+    "def recall(y_true, y_pred):\n",
+    "    \"\"\"Recall metric.\n",
+    "\n",
+    "    Only computes a batch-wise average of recall.\n",
+    "\n",
+    "    Computes the recall, a metric for multi-label classification of\n",
+    "    how many relevant items are selected.\n",
+    "    \"\"\"\n",
+    "    true_positives = K.sum(K.round(K.clip(y_true * y_pred, 0, 1)))\n",
+    "    possible_positives = K.sum(K.round(K.clip(y_true, 0, 1)))\n",
+    "    recall = true_positives / (possible_positives + K.epsilon())\n",
+    "    return recall\n",
+    "\n",
+    "def f1_score(y_true, y_pred):\n",
+    "    prec = precision(y_true, y_pred)\n",
+    "    rec = recall(y_true, y_pred)\n",
+    "    return 2*((prec*rec)/(prec+rec))\n",
+    "\n",
+    "def top_2_categorical_accuracy(y_true, y_pred):\n",
+    "    return top_k_categorical_accuracy(y_true, y_pred, k=2) \n",
+    "\n",
+    "from tensorflow.keras.layers import Activation\n",
+    "\n",
+    "model = Sequential()\n",
+    "# model.add(BatchNormalization(input_shape=input_shape, axis=-1, momentum=0.99, epsilon=0.001)) ############################\n",
+    "model.add(Conv2D(10, kernel_size=(10,10), strides=5, padding=\"same\", input_shape=input_shape, name=\"conv1\"))\n",
+    "model.add(Activation('relu', name=\"relu1\"))\n",
+    "\n",
+    "print(model.output_shape)\n",
+    "model.add(MaxPooling2D(pool_size=(2, 2)))\n",
+    "print(model.output_shape)\n",
+    "model.add(Conv2D(20, kernel_size=(10,10), strides=5, padding=\"same\", name=\"conv2\"))\n",
+    "model.add(Activation('relu', name=\"relu2\"))\n",
+    "\n",
+    "\n",
+    "print(model.output_shape)\n",
+    "model.add(Dropout(0.25))\n",
+    "model.add(MaxPooling2D(pool_size=(2, 2)))\n",
+    "print(model.output_shape)\n",
+    "model.add(Flatten())\n",
+    "print(model.output_shape)\n",
+    "model.add(Dense(64, activation='relu'))\n",
+    "print(model.output_shape)\n",
+    "model.add(Dropout(0.5))\n",
+    "print(model.output_shape)\n",
+    "model.add(Dense(num_classes, activation='softmax'))\n",
+    "print(model.output_shape)\n",
+    "\n",
+    "model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy', top_2_categorical_accuracy, f1_score, precision, recall])"
+   ],
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "(None, 10, 300, 300)\n",
+      "(None, 10, 150, 150)\n",
+      "(None, 20, 30, 30)\n",
+      "(None, 20, 15, 15)\n",
+      "(None, 4500)\n",
+      "(None, 64)\n",
+      "(None, 64)\n",
+      "(None, 5)\n"
+     ]
+    }
+   ],
+   "execution_count": 32
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "### Define nice_imshow and make_moasic functions"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "metadata": {
+    "ExecuteTime": {
+     "end_time": "2025-10-14T13:59:07.197765Z",
+     "start_time": "2025-10-14T13:59:07.141330Z"
+    }
+   },
+   "source": [
+    "import pylab as pl\n",
+    "import matplotlib.cm as cm\n",
+    "from mpl_toolkits.axes_grid1 import make_axes_locatable\n",
+    "import numpy.ma as ma\n",
+    "\n",
+    "def nice_imshow(ax, data, vmin=None, vmax=None, cmap=None, bar=True):\n",
+    "    \"\"\"Wrapper around pl.imshow\"\"\"\n",
+    "    if cmap is None:\n",
+    "        cmap = cm.jet\n",
+    "    if vmin is None:\n",
+    "        vmin = data.min()\n",
+    "    if vmax is None:\n",
+    "        vmax = data.max()\n",
+    "    divider = make_axes_locatable(ax)\n",
+    "    im = ax.imshow(data, vmin=vmin, vmax=vmax, interpolation='nearest', cmap=cmap,origin='lower')\n",
+    "    if bar:\n",
+    "        cax = divider.append_axes(\"right\", size=\"5%\", pad=0.05)\n",
+    "        pl.colorbar(im, cax=cax)\n",
+    "\n",
+    "def plotNNFilter2(data, nrows, ncols, layer_name, cmap=None, bar=True):\n",
+    "    \"\"\"Wrapper around pl.subplot with color bar\"\"\"\n",
+    "    if cmap is None:\n",
+    "        cmap = \"gray\"\n",
+    "    \n",
+    "    fig, axes = pl.subplots(nrows, ncols,figsize=(5*ncols, 4*nrows))\n",
+    "    for i, ax in enumerate(axes.flat):\n",
+    "        im = ax.imshow(data[:,:,i], interpolation=\"nearest\", cmap=cmap)\n",
+    "        ax.set_yticklabels([])\n",
+    "        ax.set_xticklabels([])\n",
+    "        ax.invert_yaxis()\n",
+    "\n",
+    "    fig.subplots_adjust(wspace=0.025, hspace=0.05)\n",
+    "    if bar:\n",
+    "        fig.colorbar(im, ax=axes.ravel().tolist())\n",
+    "    \n",
+    "    pl.savefig(MODEL_NAME +  \"_plotNNFilter2_\" + layer_name, bbox_inches='tight', pad_inches=1)\n",
+    "    pl.show()\n",
+    "\n",
+    "def plotNNFilter(data, nrows, ncols, layer_name, cmap=None, bar=True):\n",
+    "    \"\"\"Wrapper around pl.subplot\"\"\"\n",
+    "    if cmap is None:\n",
+    "        cmap = \"gray\"\n",
+    "    \n",
+    "    pl.figure(figsize=(3*ncols, 3*nrows))\n",
+    "    \n",
+    "    for i in range(nrows*ncols):\n",
+    "        pl.subplot(nrows, ncols, i+1)\n",
+    "        pl.imshow(data[:,:,i], interpolation=\"nearest\", cmap=cmap)\n",
+    "        pl.xticks([])\n",
+    "        pl.yticks([])\n",
+    "        pl.gca().invert_yaxis()\n",
+    "    pl.subplots_adjust(wspace=0.025, hspace=0.05)\n",
+    "    pl.savefig(MODEL_NAME +  \"_plotNNFilter_\" + layer_name, bbox_inches='tight', pad_inches=1)\n",
+    "    pl.show()\n",
+    "        \n",
+    "def make_mosaic(imgs, nrows, ncols, border=1):\n",
+    "    \"\"\"\n",
+    "    Given a set of images with all the same shape, makes a\n",
+    "    mosaic with nrows and ncols\n",
+    "    \"\"\"\n",
+    "    nimgs = imgs.shape[2]\n",
+    "    imshape = imgs.shape[0:2]\n",
+    "    \n",
+    "    mosaic = ma.masked_all((nrows * imshape[0] + (nrows - 1) * border,\n",
+    "                            ncols * imshape[1] + (ncols - 1) * border),\n",
+    "                            dtype=np.float32)\n",
+    "    \n",
+    "    paddedh = imshape[0] + border\n",
+    "    paddedw = imshape[1] + border\n",
+    "    for i in range(nimgs):\n",
+    "        row = int(np.floor(i / ncols))\n",
+    "        col = i % ncols\n",
+    "        \n",
+    "        mosaic[row * paddedh:row * paddedh + imshape[0],\n",
+    "               col * paddedw:col * paddedw + imshape[1]] = imgs[:,:,i]\n",
+    "    return mosaic\n",
+    "\n",
+    "def mosaic_imshow(imgs, nrows, ncols, cmap=None, border=1, layer_name=\"convout\"):\n",
+    "    pl.figure(figsize=(3*ncols, 3*nrows))\n",
+    "#     pl.suptitle('convout2')\n",
+    "    nice_imshow(pl.gca(), make_mosaic(imgs, nrows, ncols, border=border), cmap=cmap)\n",
+    "    pl.savefig(MODEL_NAME +  \"_mosaic_imshow_\" + layer_name, bbox_inches='tight', pad_inches=1)\n",
+    "    pl.show()\n",
+    "\n",
+    "pl.imshow(make_mosaic(np.random.random((10, 10, 9)), 3, 3, border=1))\n",
+    "pl.show()"
+   ],
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "<Figure size 640x480 with 1 Axes>"
+      ],
+      "image/png": "iVBORw0KGgoAAAANSUhEUgAAAaAAAAGdCAYAAABU0qcqAAAAOnRFWHRTb2Z0d2FyZQBNYXRwbG90bGliIHZlcnNpb24zLjEwLjYsIGh0dHBzOi8vbWF0cGxvdGxpYi5vcmcvq6yFwwAAAAlwSFlzAAAPYQAAD2EBqD+naQAALt9JREFUeJzt3QlcVXX6x/GHHRdAUQER930vzS3LTB3RZkzTTKtJzdI09Z+SWTZl2xRWllZjNNOiY2WmTepoabliljppmZlmYiaW4lYsgizC/b/O6SVFaT0/A39w+bxfr/NC4OvDuffce5977jn3uT4ej8cjAABcYL4X+g8CAOCgAQEArKABAQCsoAEBAKygAQEArKABAQCsoAEBAKygAQEArPCXUqagoEAOHTokISEh4uPjY3t1AACGnPkGGRkZEh0dLb6+vmWnATnNp3bt2rZXAwDwBx08eFBiYmIufAOaPXu2PPnkk5KSkiJt27aV5557Tjp27Pi7/8/Z83G0Hny/+AUEq/5WekP9ejX41zf6sIhc9c4X6uz+7BpGtZtWOKzOPrEt1qh2qzqH1NmsPseNakv7FkbxpWvvUWcveWS2Ue3ojVnqbFZkkFHtlKvypKS8dunLRvkp99ymzr7z9CtGtbu8OFqd7XH1NqPaT7TVr0vL12ca1Q44GqDOVmr+g1Ht8Fm6x54zDl1WUZ298i+fGNWOCExXZ+dtvNyodni9VHU2Z0M1dTY/N1v2/vPhwsfzC9qA3nzzTYmLi5MXXnhBOnXqJLNmzZLY2FjZs2ePRERE/Ob/PfOym9N8/AJ1NwJfg9uKv2+gPiwiFSrrr6Ig/wCz2hX0tX0rmt0hAirpL6e/j9l6i7/ZuoSGhqqzfkFmtf39C/TZALMG5FvBT0pK5RCzw6/+yidjjlDD2ibXeWDlgBLb9r4VzLa9b7B+Xfwqmm17f8PbeEleh8GBASV2HZpcL6b3TcfvHUYpkZMQnn76aRk1apTcfPPN0qJFC7cRVaxYUV55xeyZGQDAexV7A8rNzZVt27ZJr169fvojvr7u95s2bfpVPicnR9LT04ssAADvV+wN6Pjx45Kfny+RkZFFfu587xwP+qX4+HgJCwsrXDgBAQDKB+vvA5o6daqkpaUVLs5ZEwAA71fsJyFUr15d/Pz85MiRI0V+7nwfFRX1q3xQUJC7AADKl2LfAwoMDJT27dvLmjVriry51Pm+S5cuxf3nAABlVImchu2cgj18+HC55JJL3Pf+OKdhZ2ZmumfFAQBQYg1oyJAhcuzYMZk2bZp74sFFF10kK1eu/NWJCQCA8qvEJiGMHz/eXc5X3wkbJFj5hq2Fc3uo63ZfnWS0HjPfGKDOxt80z6j2vzr//mSIMxK2vGZU+54Zt6qzf925z6h2q+AFRnmRaeqkx/C9n2+/+YI6O6TrYKPa+bfq38wb8E/9u8QdA2WsUb7pgZPq7BV3mNWut/mAOvtlr5J7Etlwnv5NxY4qj+xVZ2fVXWJUe9RJ/XQIR4XO+okcnz7azqz2kWx1NnraMaPaK1vNV2c7fxCnzhbkl5Gz4AAA5RMNCABgBQ0IAGAFDQgAYAUNCABgBQ0IAGAFDQgAYAUNCABgBQ0IAGAFDQgA4F2jeP6o95++XPwCdJ9BHnmr/jOEXtzZ1Wg9Kl9yQp09ejrUqPaYzZvV2dsX60frOF6665/q7OTpt0lJ6qNfFfFrl2pUO3bSHersS4kzjWp/nF1HX3vs5Ua1IwvMnvudfipXnT2yNcyodugHeersO01XGtUWmaVOBu399QdW/pZmIUU/8uW3DL5nslHtqt/sNspH3qr/SJn9Y6ob1a6zQj+i6NRis1FJ1w2/Wp3NudOjzhZk67LsAQEArKABAQCsoAEBAKygAQEArKABAQCsoAEBAKygAQEArKABAQCsoAEBAKygAQEArKABAQCsKLWz4PpNXifBlXWrF+CTr6678MU+Ruvx+uPPq7Ojh00wqp1XSX/1N177qVHt8cfHqLMx2zOMaueFBEpJGdZ4i1F+7e4O6uz4kWbb5+vr9c/P/E+Y3ZVCW+pnDDr8rtbPPasxsJZR7drL9Nu/xZxxRrX33qvP9l+93aj2kpSL1NnwTYeNaqcuqGaUv7fRu+rshPfqG9X2ydPPgqt7Y5JR7SPXhKizYW/p6+YrRxeyBwQAsIIGBACwggYEALCCBgQAsIIGBACwggYEALCCBgQAsIIGBACwggYEALCCBgQAsKLUjuLZOKiJ+PsGqbLdV+xW161yW7LRegyYNUWdLZiYalS71mOn1VnPaX3W8dJtz6mzo7v81ah2yPxKUlL+teNyo3yj/XvV2aN92xrVrr9IOU9ERII3f2FU+9DwVkb55Huqq7O5VfSjWxxr1+lH2kTs8EhJ2ZZR1yif/F49dTYrTj+uy+FJNrsOn502WJ3tOFN/m3V8G19FtI7/u5GYCN+dpc56auu3/ek8XZY9IACAFTQgAIAVNCAAgBU0IACAFTQgAIAVNCAAgBU0IACAFTQgAIAVNCAAgBU0IACAFTQgAIAVpXYWXPJ1tcUvKFiVXXdpurruv3YuNFqP6w/cqc4+2na+Ue2/1b5Nna241WyW1fVrxqizkYl+RrU73L1VSkpBgY9R3mRGXrWdeUa1swxm++W+3Nyo9oTb3zbK//ueq9XZ7wabXc7J7d5XZ5fNai0l5Z8xm4zy7dL0M+yWjX3KqPbXp8OM8rd6Rqqz11X83qh29cBMdTZ5mH62m+Pw3Pr69dj2gzp7Oj9HlWMPCABgRbE3oAcffFB8fHyKLM2aNSvuPwMAKONK5CW4li1byurVq3/6I/6l9pU+AIAlJdIZnIYTFRVVEqUBAF6iRI4B7d27V6Kjo6VBgwZy4403SnLyuT8ELicnR9LT04ssAADvV+wNqFOnTjJ37lxZuXKlJCQkyP79++Xyyy+XjIyMs+bj4+MlLCyscKldu3ZxrxIAoDw0oL59+8rgwYOlTZs2EhsbK++++66kpqbKwoVnP/156tSpkpaWVrgcPHiwuFcJAFAKlfjZAVWqVJEmTZpIUlLSWX8fFBTkLgCA8qXE3wd08uRJ2bdvn9SsWbOk/xQAoDw3oMmTJ0tiYqJ888038tFHH8k111wjfn5+cv311xf3nwIAlGHF/hLct99+6zabEydOSI0aNeSyyy6TzZs3u/82EXrZEfGvpHtp7lBWK3XdKxIbGq1HnawCdfbRoTcZ1Q4I1Y+R8atSxaj28j89q86Oe/v/jGofzQ6RktLs7iNG+WNv11FnT/ygv74dTSd61NmcGLPab46MNcoPeXmFOjvrv38xqv1q9U7q7Kh1G6WkNNkwzCjfeMV36mziHQ2Mas/857VG+dp9DquzV4d9YlT7r+tGq7PNZ6QZ1U6/UZ/Nv0Z/f8jP8ogMsdCAFixYUNwlAQBeiFlwAAAraEAAACtoQAAAK2hAAAAraEAAACtoQAAAK2hAAAAraEAAACtoQAAAK2hAAADv/DiG85W7NELyA4NV2WY3f6mu26jSMaP1WNj9MnX23gHvGdX+IquWOvtk1KdGtds/FKfOdn1kq1HtVcs7GOWliz6afGM9o9K+eT+os32b7jKqvT83Up093NXsI0WW3Kqf1ed4+Ls/q7OvXvcPo9pNA3LU2U6v3mlUe+Q9+myj0d8Y1T56bUt19lBuVaPaY0ctNcrvy45QZ18/calRbd80/cP0sS7VjWpf2munOpv4VWN1tuCUnyrHHhAAwAoaEADAChoQAMAKGhAAwAoaEADAChoQAMAKGhAAwAoaEADAChoQAMAKGhAAwIpSO4rn+0554ltBN87B871+/MShJxoZrUet7Dx19vGsa41qV/88X529pFpno9oRW9PU2W0/tDeqXfvbTKO8TNNHHx0116j0xBU3qbPv725nVDvvb6fV2amXLTGqfSy/glG+ZrB+ezYIyDaq/dDRK9TZWhv014nLYBRP1lvhRqUrPqu//3z4Z/0YGYfPq/rajgPv1FdnM+uY1fZULFBnU5voHjPP+HhJa3W29k79tj+d5y8HFTn2gAAAVtCAAABW0IAAAFbQgAAAVtCAAABW0IAAAFbQgAAAVtCAAABW0IAAAFbQgAAAVtCAAABWlNpZcGHhmeJXUTd7KNBfP1vJL1s/V8lR64EkdTbSY9bPkw43VWe/v8hsvfMqV1Fnw//8nVHtgFEeKSmzk3sY5fcOSlBnv8jLNao9+frb1Nmbr9JMvvrJ0983M8rvGNNKnR0U09GodsHoY+rs4X4l95z1/obLjPKZM4PU2UceG25U+8RnZrfxwTd8pM7+Z63ZXMfqm33U2Q+e+IdR7ceO62fBbRynv135ntbd19gDAgBYQQMCAFhBAwIAWEEDAgBYQQMCAFhBAwIAWEEDAgBYQQMCAFhBAwIAWEEDAgBYQQMCAFjh4/F4Sm6w13lIT0+XsLAwSUtLk9DQUNurAwAoocdx9oAAAFYYN6ANGzZIv379JDo6Wnx8fGTJkiVFfu/sUE2bNk1q1qwpFSpUkF69esnevXuLc50BAOWxAWVmZkrbtm1l9uzZZ/39E088Ic8++6y88MILsmXLFqlUqZLExsZKdnZ2cawvAKC8fh5Q37593eVsnL2fWbNmyX333Sf9+/d3fzZv3jyJjIx095SGDh36x9cYAOAVivUY0P79+yUlJcV92e0M50BUp06dZNOmTWf9Pzk5Oe4Bq58vAADvV6wNyGk+DmeP5+ec78/87pfi4+PdJnVmqV27dnGuEgCglLJ+FtzUqVPdU/XOLAcPmn20MQCgbCrWBhQVFeV+PXLkSJGfO9+f+d0vBQUFueeJ/3wBAHi/Ym1A9evXdxvNmjVrCn/mHNNxzobr0qVLcf4pAEB5Owvu5MmTkpSUVOTEg+3bt0t4eLjUqVNHJk6cKH//+9+lcePGbkO6//773fcMDRgwoLjXHQBQnhrQ1q1b5corryz8Pi4uzv06fPhwmTt3rkyZMsV9r9Do0aMlNTVVLrvsMlm5cqUEBwcb/Z1u4/4hfoG6/+Nz7XF13bx3ahitx9/jXlFnn/y/m4xqP/yPF9XZZakXG9X+fFQLddY3w+w9WvPWzDPKR9Q6pM7Wnfu4Ue2w7YHqbOKUp4xq95kySZ093sbHqHZAhlm+/mv6Y6PZL5vVbh5W9CXz3/LRK+2Mam+f/ePjg8aVvaYb1T7aLkidrfP610a1Dw+ob5SP/OAHdfZPC/5nVHv15XXV2WGbtxvVfvf71urs0W76x4nTnrySaUDdu3d33+9zLs50hIcffthdAAAotWfBAQDKJxoQAMAKGhAAwAoaEADAChoQAMAKGhAAwAoaEADAChoQAMAKGhAAwAoaEADACuNRPBdK6pWnxLfiuUf+/Fz0i1XVdf8+Qz9/zfH4bcPU2eSbCoxq78qupc7+b1oHo9oVduhnQu1OaGNU+5OcKkb5PgZZnwyzm2TMwP3q7JRDPYxqB998WJ0dW/Nzo9p3VP1poK9Gz09uU2eD+35mVHvN3y5RZ6sfyZeScrCXfq6fo/OVO9XZI09lGNWO+Li6Uf7LcfqPkflqVW+j2oH/ylRnZ8xoZlT7RDv99uywbp86m5eZK6K4mOwBAQCsoAEBAKygAQEArKABAQCsoAEBAKygAQEArKABAQCsoAEBAKygAQEArKABAQCsKLWjePz8891Fo97dX6rrtgtKNVqPAn8fdfaSRvqxMI7/dtOPzTg2xmxThY+PUWd9kvyMaj/VuJVRvo/B9Jbm078xqr3vtgbq7ImvzEYlVR2VrM62CP7OqHbT9bcY5e+Y8b46O3N1X6PaVb/QjbxyXH7/JikpjZ8zu/8cfyZYnd03o4VR7VaXmK1LS4/+ufy+9fWNav/9z0vV2ZeGm903I9/Vj9X67tJG6uzpvGxVjj0gAIAVNCAAgBU0IACAFTQgAIAVNCAAgBU0IACAFTQgAIAVNCAAgBU0IACAFTQgAIAVNCAAgBWldhbca+3nSuUQXX8c/NKd+rrX6+d7OfKD9T36yPSGRrUDm+eps5UOecxqz6iqzvr8RT/vzpH06kVGeaPa48zmZOVWP63OXtpvq1Httz9tp84+O/BSo9ohN1Ywys/8oY86u+fa2Ua1B190lTq7/EBLo9rT2+qzu6dHG9WuX+u4OhuyxOy5dvaCCKP8ntH6uXQX99hrVPuuFTeos3dufceo9jv9o9TZgpH669uTmSOy+Pdz7AEBAKygAQEArKABAQCsoAEBAKygAQEArKABAQCsoAEBAKygAQEArKABAQCsoAEBAKwotaN4pvX8i/j7BqqyOTNOqeu+M+ZKo/WomJWpzrb8126j2u0qH1Bn7/vgGqPas+57UZ3969rRRrUTOs83yovcq07WW66/vh37BlVSZ6+q8plR7ZG9PlRnm+0MMqrd8ZMaRvlmI/RjUHquHmtUO2HWM+rsNZvijGrL1fpo8/uOGpX2zCtQZ6t/rn+McMz5T4JR/vKN49XZXesaG9UO9NGP4bo17Guj2jev26fOPna8vTqbczJPtily7AEBAKygAQEAykYD2rBhg/Tr10+io6PFx8dHlixZUuT3I0aMcH/+86VPH/0kXwBA+WDcgDIzM6Vt27Yye/a5R747Defw4cOFyxtvvPFH1xMAUN5PQujbt6+7/JagoCCJitJ/zgQAoPwpkWNA69evl4iICGnatKmMHTtWTpw4cc5sTk6OpKenF1kAAN6v2BuQ8/LbvHnzZM2aNfL4449LYmKiu8eUn59/1nx8fLyEhYUVLrVr1y7uVQIAlIf3AQ0dOrTw361bt5Y2bdpIw4YN3b2inj17/io/depUiYv76b0Fzh4QTQgAvF+Jn4bdoEEDqV69uiQlJZ3zeFFoaGiRBQDg/Uq8AX377bfuMaCaNWuW9J8CAHjzS3AnT54ssjezf/9+2b59u4SHh7vLQw89JIMGDXLPgtu3b59MmTJFGjVqJLGxscW97gCA8tSAtm7dKlde+dM8tTPHb4YPHy4JCQmyY8cO+fe//y2pqanum1V79+4tjzzyiPtSm4mv4uqKb3CwKruu2wx13Wur3my0HuH996uzUyM+MKqd59HPeKq/QJ917L1Mfxp89PtmN4NZCdca5a/6WJ/9aqTZ7aT5387+0u7ZPDn/p+OTGjUTktXZQ50zjGpXei/PKD9xi/62VS9gmVHtoZ+NVGcn919qVFtEPzvu4Q1vG1VuFHD2E5vO5tqC241qf5QdbZRvPPJLdTZqfYBR7XYh+tthizcnGNWOaH5MnX286X/U2UyfAnm6JBpQ9+7dxfMbD5zvvfeeaUkAQDnELDgAgBU0IACAFTQgAIAVNCAAgBU0IACAFTQgAIAVNCAAgBU0IACAFTQgAIAVNCAAgHd8HlBxKQjNE6ngp8pmFuj7aPCLVY3Ww6/mKXX2mjv0c68cF9/7iTqbPFI/98rx7KxB6uxjj71iVHvR8Q5SUh7vvtAon7dRfxP+x0ODjWp7JtZXZ/c9Wcmo9qpmTxrlx319nTp76rTZrLHsXH3+qR29jGqPaarP3nGX2Ryzyku2qbPHx1Qwqj05cYhRPmHnPHV26hfXGNU+ZDBnsFm9Q0a19zxaTZ0dl6Cfp5efky0i9/5ujj0gAIAVNCAAgBU0IACAFTQgAIAVNCAAgBU0IACAFTQgAIAVNCAAgBU0IACAFTQgAIAVpXYUT9MZqeLvF6TKDt0xWV03ZsvXRutRUK2KOhv6aYpR7SDf0+pspYo5RrUzuumz6QXBRrUTP2htlJeO+mj87r5GpSu+FqbOBuQWGNVOGqcbBeX4z2WzjGrf3u9Wo3xac/3t8EQbH6PaFVv9oM7WmGl2WxGD6Uf+p8y2z9IDm9TZq2vp72uOtGc7GeWn3zFMnU3vpb9dOTIf6yJaC683ux2+d7KVOjtnn34MU36AR5VjDwgAYAUNCABgBQ0IAGAFDQgAYAUNCABgBQ0IAGAFDQgAYAUNCABgBQ0IAGAFDQgAYAUNCABgRamdBffI0oVSOUTXH++6qI+67rdzo43Wo+Yj+h5d6YWTRrU/vv8SdbbW/74xqj1u0wfq7KwRQ41q15dTRnm5Ux/tWPOAUekvs/Vz6R575gWj2uOfGq/O7uhQy6h20j1mM9UqbdbfDh8b/JpR7afvu0GdTelccs9ZK312yCh/dYx+yGDnz3KNatfI3GOU372zuTpbdZdRaYlckazOJvTqblR73b4m6uwDQxaqs6dOnpbbHv39HHtAAAAraEAAACtoQAAAK2hAAAAraEAAACtoQAAAK2hAAAAraEAAACtoQAAAK2hAAAArSu0onus23Ca+FXTjSppm7lDXjYkzGyMzJ/F1dfaKl+8yqn33U2+ps7OTzEZs5Hv0zy18TxcY1e778gajvMjf1Mmrwz81qrxxRAN19q6ptxvVrvn5cXX2+NhQo9qNJ5mNnfnbppXqbNyD44xq+wR61NmMlmYjbUx8M6yuUb7aLv34o1fXmz3XjvjYKC5ZDXzU2d1jnjeqvf3eHHX2m9PVjGpv2nqxOntFV/2YrAzlYwp7QAAAK4waUHx8vHTo0EFCQkIkIiJCBgwYIHv2FB3al52dLePGjZNq1apJ5cqVZdCgQXLkyJHiXm8AQHlqQImJiW5z2bx5s6xatUry8vKkd+/ekpmZWZiZNGmSLFu2TBYtWuTmDx06JAMHDiyJdQcAlJdjQCtXFn0deu7cue6e0LZt26Rbt26SlpYmL7/8ssyfP1969OjhZubMmSPNmzd3m1bnzp2Ld+0BAGXWHzoG5DQcR3h4uPvVaUTOXlGvXr0KM82aNZM6derIpk2bzlojJydH0tPTiywAAO933g2ooKBAJk6cKF27dpVWrVq5P0tJSZHAwECpUqVKkWxkZKT7u3MdVwoLCytcateufb6rBAAoDw3IORa0c+dOWbBgwR9agalTp7p7UmeWgwcP/qF6AAAvfh/Q+PHjZfny5bJhwwaJiYkp/HlUVJTk5uZKampqkb0g5yw453dnExQU5C4AgPLFaA/I4/G4zWfx4sWydu1aqV+/fpHft2/fXgICAmTNmjWFP3NO005OTpYuXboU31oDAMrXHpDzsptzhtvSpUvd9wKdOa7jHLupUKGC+/WWW26RuLg498SE0NBQmTBhgtt8OAMOAHDeDSghIcH92r170bEwzqnWI0aMcP89c+ZM8fX1dd+A6pzhFhsbK88/bzZ6AgDg/Xw8zutqpYhzGrazJ+WckODsQQEAyhbt4ziz4AAAVtCAAABW0IAAAFbQgAAAVtCAAABW0IAAAFbQgAAAVtCAAABW0IAAAFbQgAAAZefjGC6Er79tLCEhuv448Mkp6rqV/nL2D8Y7F/9nqqmzfrkFRrVzquiv/qzhqUa1qz1VUZ1N7h1sVLtvn4+N8s9e/IY6O2NXrFHt5JwfP41Xo3PlfUa1B1U+rs52fHSCUe2ag78xyu/5LlIfPmb28Sa9un6mzq7Z0Nao9tdxd6qzLe+ZaVT7wVtfU2czCsxu47EVvzbK3zBqojp7slaAUe3IYfrbSn6/k0a198S3UGeDjvvp1yM7W5VjDwgAYAUNCABgBQ0IAGAFDQgAYAUNCABgBQ0IAGAFDQgAYAUNCABgBQ0IAGAFDQgAYAUNCABgRamdBfdW+kUSXKCbmeST71HX7R6112g9Ptmaoc7undzIqHblgz7q7IyWbxnVntDtNnU25Bv99ecI8MmXkrLmL62M8imxtdTZPa+ZzUh7cal+DmBOVaPSMiZmvVH+b++MUGfrvG42x+z9aa3V2dv7rDKqLaKfBVfQKc2ocmJ6U3X2r9U+Mqo98O7JRvnT0fr7cq3hZtvH31d/f9szRr8tHXXezVNnDw07pc4WZDELDgBQitGAAABW0IAAAFbQgAAAVtCAAABW0IAAAFbQgAAAVtCAAABW0IAAAFbQgAAAVpTaUTyvJnYT3+BgVbbJazvVdXddH2W0Hkl36sfrRG0pMKr9XX/9GIxKPrlGtUO/1q+Lf7bZKJ4Cj37siKkDQ2KM8oNv0I+0mde8m1HtWyLWqbOX3LzCqPa4t281yjd6/3t92N/sbl3nHX325r/skJLySee5Rvlr2v1ZnR3ywDij2vEPvmmUn/rhIHW2VVCWUe3N7+rH61Q+bnZfrjzlW3V2WPh+dTb7ZJ7EK3LsAQEArKABAQCsoAEBAKygAQEArKABAQCsoAEBAKygAQEArKABAQCsoAEBAKygAQEArKABAQCsKLWz4ELqpYlfxWxVtvE6Xc7x2UPNjdajRrB+ptojT75oVtsvU50deX+cUe0pD7yuzj7+2I1GtQ+eqiolJbeq2Syrt1/prs56Ls4xqt2qwkF1dsK2641qf3njbKP8rd2uUGcPdTlpVHvJRwvV2SCfACkpzVeNMcq/ukl/fxv239uNat+/eKhRPrLNMXV2y3L9bDdH3R4HRGvvoQgxsaLhW+rsw0f097XcXN2cS/aAAABWGDWg+Ph46dChg4SEhEhERIQMGDBA9uzZUyTTvXt38fHxKbKMGWP2zAYA4P2MGlBiYqKMGzdONm/eLKtWrZK8vDzp3bu3ZGYWfSlp1KhRcvjw4cLliSeeKO71BgCUp2NAK1euLPL93Llz3T2hbdu2SbduP33WSsWKFSUqyuxzdwAA5csfOgaUlpbmfg0PDy/y89dff12qV68urVq1kqlTp0pW1rk/gCknJ0fS09OLLAAA73feZ8EVFBTIxIkTpWvXrm6jOeOGG26QunXrSnR0tOzYsUPuvvtu9zjR22+/fc7jSg899ND5rgYAoLw1IOdY0M6dO2Xjxo1Ffj569OjCf7du3Vpq1qwpPXv2lH379knDhg1/VcfZQ4qL++kUY2cPqHbt2ue7WgAAb25A48ePl+XLl8uGDRskJibmN7OdOnVyvyYlJZ21AQUFBbkLAKB8MWpAHo9HJkyYIIsXL5b169dL/fr1f/f/bN++3f3q7AkBAHBeDch52W3+/PmydOlS971AKSkp7s/DwsKkQoUK7stszu+vuuoqqVatmnsMaNKkSe4Zcm3atDH5UwAAL2fUgBISEgrfbPpzc+bMkREjRkhgYKCsXr1aZs2a5b43yDmWM2jQILnvvvuKd60BAOXvJbjf4jQc582qxeH9i96Q0BDdWeLLs2qo6+5O/emMPY1a079RZ6cl9TeqXfAv/dym8BWfGdW+v//V6uwL0358YlEa9O+92Sj/wdM/HmPUqBz1g1Hthcc66muvrWRUu/ubY43y3/XQZwPfPPfbHs7m6jsMLudXP771Quu9Hfps1WoZUlIqfmf2jpMxNy8zys9/4Cp1NtyTb1Q7P1H/OBHYs4JR7St23aXOnmqqn7lZcEqXZRYcAMAKGhAAwAoaEADAChoQAMAKGhAAwAoaEADAChoQAMAKGhAAwAoaEADAChoQAKBsfR5QSfvrjTeJv1+wKuv7zY9DUTX2zzJbj5Sj+ineUbPMPlZi3qtPqbN9a00xqj24sX4k0vTYgUa1L/3PLqN80cmBv23V3C5GtTtM0I8oWpfUxKi2z4v6EU/VUk4Z1c5/6HujfMxz+o+4D5103Kj2l13qqbONV30nJeXR5kuN8uG++tEw0X2SjWpfFHzAKD9XOTbMcbyD2SieqHr6T4n2X2s2iicrukCdDd2qezx25OfocuwBAQCsoAEBAKygAQEArKABAQCsoAEBAKygAQEArKABAQCsoAEBAKygAQEArKABAQCsoAEBAKwotbPgajxxUAIqBaqynyxppa4b8qHZelRO0a2D47vL/Yxqd9s4Xp1tsthsltW8Fl3VWf9bzNZ7abVFUlLyzcbpyfYX2qizvrGZRrWPXaef71ZzntmKB/noZ3A5fojWb6P4Ou8Y1R55ZIQ6W5CRISWlccAJo/ywyXeqsxm1zW7jN1cfZ5T3q+OjzvpUPG1Ue0ObhersxaeGGdVu8qB+Lt0Prauos/m5uts3e0AAACtoQAAAK2hAAAAraEAAACtoQAAAK2hAAAAraEAAACtoQAAAK2hAAAAraEAAACtK7Siezf9rJr7BwapslR886rrBqfqsY+7Mp9TZm6ZMNqpdp69+vE56ttkokVr1jquzlQNzjGq3SLzFKL9vqD674f9mGNVuv3SSOtssUn+dOEbU0s9t+me1K4xqS6/vjOLZ99VRZ4N9zEa9PHLxUnX2rY2XSEm5Zc9fjfJhq79SZz2xTY1qV/3KbFTSooSZ6uzXebrHtTM6xk8QLU+IGDnZUD+KJ72Bfn8lP0eXZQ8IAGAFDQgAYAUNCABgBQ0IAGAFDQgAYAUNCABgBQ0IAGAFDQgAYAUNCABgBQ0IAGAFDQgAYEWpnQXXeMY+8fcNVGUPvhiprhs+K8hoPfpvu02d7TDpC6Pan7/YSp0NaW823+uZprPV2Ylx+llTjppjjkpJ6fj6nUb5ys1S1dnMp2OMaj9fcJ06m9zH8LncczWN4o3/b4s6OzjSbHv6hOWqs59dmSAlpeD5CKN82p+i1NnvB2Ya1c5JNZvX9ucH9HMgO439xKi2f6Z+fuWpGj5GtRvdvUudPflqa3U2X3mTYg8IAGCFUQNKSEiQNm3aSGhoqLt06dJFVqxYUfj77OxsGTdunFSrVk0qV64sgwYNkiNHjpTEegMAylMDiomJkenTp8u2bdtk69at0qNHD+nfv7988cWPLz1NmjRJli1bJosWLZLExEQ5dOiQDBw4sKTWHQBQXo4B9evXr8j3jz76qLtXtHnzZrc5vfzyyzJ//ny3MTnmzJkjzZs3d3/fuXPn4l1zAECZdt7HgPLz82XBggWSmZnpvhTn7BXl5eVJr169CjPNmjWTOnXqyKZNm85ZJycnR9LT04ssAADvZ9yAPv/8c/f4TlBQkIwZM0YWL14sLVq0kJSUFAkMDJQqVaoUyUdGRrq/O5f4+HgJCwsrXGrXrn1+lwQA4N0NqGnTprJ9+3bZsmWLjB07VoYPHy67dulP5fulqVOnSlpaWuFy8ODB864FAPDi9wE5ezmNGjVy/92+fXv5+OOP5ZlnnpEhQ4ZIbm6upKamFtkLcs6Ci4o69/n6zp6UswAAypc//D6ggoIC9ziO04wCAgJkzZo1hb/bs2ePJCcnu8eIAAA47z0g5+Wyvn37uicWZGRkuGe8rV+/Xt577z33+M0tt9wicXFxEh4e7r5PaMKECW7z4Qw4AMAfakBHjx6VYcOGyeHDh92G47wp1Wk+f/rTn9zfz5w5U3x9fd03oDp7RbGxsfL888/L+Tj1SiXxr6R7aW509Ifquv/Nv9JoPTJTKqmzB59rbFT7pVdmqbOjvrjJqPYzKT+djfh7fmjiZ1S7Vux+o7wU6KM++qkjrtMfV1VnJz09z6j2/f8cps5GbDa4kM5Yk0EZRvlpSR+rs7fO7WRU2xOhH/N0eXycUe3PntNnffKNSktApv4/hP9Hfz929L/vp1dyNObv/vExUCPU/5RR7bD9OersRWP2GNU+EKd/zEobqr++C07lF38Dct7n81uCg4Nl9uzZ7gIAwG9hFhwAwAoaEADAChoQAMAKGhAAwAoaEADAChoQAMAKGhAAwAoaEADAChoQAKBsTMMuaR7Pj7NYTmflqv9P9kn9KJHTp7ON1qfglH7EyunT+vVwnMzQ187P0o/jcOQF66+//Byz6+S0J88ob/IhgwXZZuuSn+OjzmZlmM16Mble8nPNRvGYbs9Mk9uK4fb0ZJlczoAS2/an88zW26dAP7fpdJ7ZuKnsk2a3cZPrPMew9mmDx6zck7klVrvglMf4fnzm8fxcfDy/l7jAvv32Wz6UDgC8gPP5bjExMWWnATkf73Do0CEJCQkRHx+fIs+knMbkXCBn0ra34nJ6j/JwGR1cTu+SXgyX02krzicmREdHuwOqy8xLcM7K/lbHdK4Qb974Z3A5vUd5uIwOLqd3Cf2Dl9P5xITfw0kIAAAraEAAACvKTAMKCgqSBx54wP3qzbic3qM8XEYHl9O7BF3Ay1nqTkIAAJQPZWYPCADgXWhAAAAraEAAACtoQAAAK8pMA5o9e7bUq1dPgoODpVOnTvK///1PvMmDDz7oTn74+dKsWTMpyzZs2CD9+vVz3w3tXJ4lS5YU+b1z/su0adOkZs2aUqFCBenVq5fs3btXvO1yjhgx4lfbtk+fPlKWxMfHS4cOHdwJJRERETJgwADZs2dPkUx2draMGzdOqlWrJpUrV5ZBgwbJkSNHxNsuZ/fu3X+1PceMGSNlSUJCgrRp06bwzaZdunSRFStWXPBtWSYa0JtvvilxcXHuqYGffPKJtG3bVmJjY+Xo0aPiTVq2bCmHDx8uXDZu3ChlWWZmprutnCcPZ/PEE0/Is88+Ky+88IJs2bJFKlWq5G5X58bvTZfT4TScn2/bN954Q8qSxMRE9wFp8+bNsmrVKsnLy5PevXu7l/2MSZMmybJly2TRokVu3hmpNXDgQPG2y+kYNWpUke3p3JbLkpiYGJk+fbps27ZNtm7dKj169JD+/fvLF198cWG3pacM6Nixo2fcuHGF3+fn53uio6M98fHxHm/xwAMPeNq2bevxVs5NbfHixYXfFxQUeKKiojxPPvlk4c9SU1M9QUFBnjfeeMPjLZfTMXz4cE///v093uTo0aPuZU1MTCzcdgEBAZ5FixYVZnbv3u1mNm3a5PGWy+m44oorPHfccYfH21StWtXz0ksvXdBtWer3gHJzc90u7bw88/N5cc73mzZtEm/ivPzkvIzToEEDufHGGyU5OVm81f79+yUlJaXIdnVmRzkvr3rbdnWsX7/efUmnadOmMnbsWDlx4oSUZWlpae7X8PBw96tzH3X2Fn6+PZ2XkOvUqVOmt+cvL+cZr7/+ulSvXl1atWolU6dOlaysLCmr8vPzZcGCBe5envNS3IXclqVuGOkvHT9+3L2CIiMji/zc+f7LL78Ub+E88M6dO9d9gHJ26R966CG5/PLLZefOne7r0d7GaT6Os23XM7/zFs7Lb87LF/Xr15d9+/bJvffeK3379nXvzH5+Zp9TU1om1k+cOFG6du3qPgA7nG0WGBgoVapU8ZrtebbL6bjhhhukbt267pPFHTt2yN133+0eJ3r77belLPn888/dhuO85O0c51m8eLG0aNFCtm/ffsG2ZalvQOWF84B0hnNw0GlIzo184cKFcsstt1hdN/wxQ4cOLfx369at3e3bsGFDd6+oZ8+eUtY4x0icJ0Zl/Rjl+V7O0aNHF9mezkk0znZ0nlw427WsaNq0qdtsnL28t956S4YPH+4e77mQSv1LcM5urvMs8ZdnYDjfR0VFibdynn00adJEkpKSxBud2Xblbbs6nJdYndt1Wdy248ePl+XLl8u6deuKfGyKs82cl8tTU1O9Ynue63KejfNk0VHWtmdgYKA0atRI2rdv757955xI88wzz1zQbelbFq4k5wpas2ZNkV1j53tn99FbnTx50n1G5Ty78kbOy1HOjfnn29X5ICznbDhv3q5nPvXXOQZUlratc36F86DsvEyzdu1ad/v9nHMfDQgIKLI9nZelnOOYZWl7/t7lPBtnL8JRlrbn2TiPqzk5ORd2W3rKgAULFrhnR82dO9eza9cuz+jRoz1VqlTxpKSkeLzFnXfe6Vm/fr1n//79ng8//NDTq1cvT/Xq1d2zcMqqjIwMz6effuouzk3t6aefdv994MAB9/fTp093t+PSpUs9O3bscM8Uq1+/vufUqVMeb7mczu8mT57snj3kbNvVq1d72rVr52ncuLEnOzvbU1aMHTvWExYW5t5GDx8+XLhkZWUVZsaMGeOpU6eOZ+3atZ6tW7d6unTp4i5lye9dzqSkJM/DDz/sXj5nezq33QYNGni6devmKUvuuece98w+5zI49z3nex8fH8/7779/QbdlmWhAjueee869QgIDA93Tsjdv3uzxJkOGDPHUrFnTvXy1atVyv3du7GXZunXr3AfkXy7OaclnTsW+//77PZGRke4TjJ49e3r27Nnj8abL6Txw9e7d21OjRg331Na6det6Ro0aVeaePJ3t8jnLnDlzCjPOE4fbb7/dPZ23YsWKnmuuucZ98Pamy5mcnOw2m/DwcPc226hRI89dd93lSUtL85QlI0eOdG+LzuONc9t07ntnms+F3JZ8HAMAwIpSfwwIAOCdaEAAACtoQAAAK2hAAAAraEAAACtoQAAAK2hAAAAraEAAACtoQAAAK2hAAAAraEAAACtoQAAAseH/AQqiyPOD8RBtAAAAAElFTkSuQmCC"
+     },
+     "metadata": {},
+     "output_type": "display_data"
+    }
+   ],
+   "execution_count": 33
+  },
+  {
+   "cell_type": "code",
+   "metadata": {
+    "ExecuteTime": {
+     "end_time": "2025-10-14T13:59:56.716091Z",
+     "start_time": "2025-10-14T13:59:56.622725Z"
+    }
+   },
+   "source": [
+    "import matplotlib.pyplot as plt\n",
+    "from tensorflow.keras.models import load_model\n",
+    "import numpy as np\n",
+    "import matplotlib.cm as cm\n",
+    "\n",
+    "# Assume x_train and y_train_true are already loaded\n",
+    "i = 35  # sample index\n",
+    "\n",
+    "# Load your trained model\n",
+    "MODEL_NAME = \"overlap_multiclass_reg_non_bn\"\n",
+    "model = load_model(MODEL_NAME + \".h5\",\n",
+    "                   custom_objects={\n",
+    "                       'top_2_categorical_accuracy': top_2_categorical_accuracy,\n",
+    "                       'f1_score': f1_score,\n",
+    "                       'precision': precision,\n",
+    "                       'recall': recall\n",
+    "                   })\n",
+    "\n",
+    "# Display the input image\n",
+    "X = x_train[i][0]\n",
+    "print(\"Label:\", y_train_true[i])\n",
+    "plt.figure(figsize=(6,6))\n",
+    "plt.title(\"Input Sample\")\n",
+    "plt.imshow(np.squeeze(X), cmap=cm.binary, vmin=0, vmax=1)\n",
+    "plt.show()\n",
+    "\n",
+    "# Create a model to output the first conv layer\n",
+    "conv1_model = tf.keras.Model(inputs=model.input,\n",
+    "                             outputs=model.get_layer(\"relu1\").output)\n",
+    "\n",
+    "# Get output of first conv layer for the sample\n",
+    "C1 = conv1_model.predict(x_train[i:i+1])\n",
+    "C1 = np.squeeze(C1)  # remove batch dimension\n",
+    "print(\"Conv1 output shape:\", C1.shape)\n",
+    "\n",
+    "# Function to visualize filters as a mosaic\n",
+    "def mosaic_imshow(imgs, nrows, ncols, cmap=cm.binary, border=1):\n",
+    "    # imgs: (channels, H, W)\n",
+    "    channels, h, w = imgs.shape\n",
+    "    mosaic = np.ones((nrows*h + (nrows-1)*border,\n",
+    "                      ncols*w + (ncols-1)*border)) * np.nan\n",
+    "    for i in range(channels):\n",
+    "        row = i // ncols\n",
+    "        col = i % ncols\n",
+    "        mosaic[row*(h+border):row*(h+border)+h,\n",
+    "               col*(w+border):col*(w+border)+w] = imgs[i, :, :]\n",
+    "    plt.figure(figsize=(3*ncols, 3*nrows))\n",
+    "    plt.imshow(mosaic, cmap=cmap)\n",
+    "    plt.colorbar()\n",
+    "    plt.show()\n",
+    "\n",
+    "\n",
+    "# Visualize first conv layer output\n",
+    "mosaic_imshow(C1, 2, 5)  # adjust rows/cols as needed\n"
+   ],
+   "outputs": [
+    {
+     "ename": "FileNotFoundError",
+     "evalue": "[Errno 2] Unable to synchronously open file (unable to open file: name = 'overlap_multiclass_reg_non_bn.h5', errno = 2, error message = 'No such file or directory', flags = 0, o_flags = 0)",
+     "output_type": "error",
+     "traceback": [
+      "\u001B[31m---------------------------------------------------------------------------\u001B[39m",
+      "\u001B[31mFileNotFoundError\u001B[39m                         Traceback (most recent call last)",
+      "\u001B[36mCell\u001B[39m\u001B[36m \u001B[39m\u001B[32mIn[35]\u001B[39m\u001B[32m, line 11\u001B[39m\n\u001B[32m      9\u001B[39m \u001B[38;5;66;03m# Load your trained model\u001B[39;00m\n\u001B[32m     10\u001B[39m MODEL_NAME = \u001B[33m\"\u001B[39m\u001B[33moverlap_multiclass_reg_non_bn\u001B[39m\u001B[33m\"\u001B[39m\n\u001B[32m---> \u001B[39m\u001B[32m11\u001B[39m model = \u001B[43mload_model\u001B[49m\u001B[43m(\u001B[49m\u001B[43mMODEL_NAME\u001B[49m\u001B[43m \u001B[49m\u001B[43m+\u001B[49m\u001B[43m \u001B[49m\u001B[33;43m\"\u001B[39;49m\u001B[33;43m.h5\u001B[39;49m\u001B[33;43m\"\u001B[39;49m\u001B[43m,\u001B[49m\n\u001B[32m     12\u001B[39m \u001B[43m                   \u001B[49m\u001B[43mcustom_objects\u001B[49m\u001B[43m=\u001B[49m\u001B[43m{\u001B[49m\n\u001B[32m     13\u001B[39m \u001B[43m                       \u001B[49m\u001B[33;43m'\u001B[39;49m\u001B[33;43mtop_2_categorical_accuracy\u001B[39;49m\u001B[33;43m'\u001B[39;49m\u001B[43m:\u001B[49m\u001B[43m \u001B[49m\u001B[43mtop_2_categorical_accuracy\u001B[49m\u001B[43m,\u001B[49m\n\u001B[32m     14\u001B[39m \u001B[43m                       \u001B[49m\u001B[33;43m'\u001B[39;49m\u001B[33;43mf1_score\u001B[39;49m\u001B[33;43m'\u001B[39;49m\u001B[43m:\u001B[49m\u001B[43m \u001B[49m\u001B[43mf1_score\u001B[49m\u001B[43m,\u001B[49m\n\u001B[32m     15\u001B[39m \u001B[43m                       \u001B[49m\u001B[33;43m'\u001B[39;49m\u001B[33;43mprecision\u001B[39;49m\u001B[33;43m'\u001B[39;49m\u001B[43m:\u001B[49m\u001B[43m \u001B[49m\u001B[43mprecision\u001B[49m\u001B[43m,\u001B[49m\n\u001B[32m     16\u001B[39m \u001B[43m                       \u001B[49m\u001B[33;43m'\u001B[39;49m\u001B[33;43mrecall\u001B[39;49m\u001B[33;43m'\u001B[39;49m\u001B[43m:\u001B[49m\u001B[43m \u001B[49m\u001B[43mrecall\u001B[49m\n\u001B[32m     17\u001B[39m \u001B[43m                   \u001B[49m\u001B[43m}\u001B[49m\u001B[43m)\u001B[49m\n\u001B[32m     19\u001B[39m \u001B[38;5;66;03m# Display the input image\u001B[39;00m\n\u001B[32m     20\u001B[39m X = x_train[i][\u001B[32m0\u001B[39m]\n",
+      "\u001B[36mFile \u001B[39m\u001B[32m/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/keras/src/saving/saving_api.py:196\u001B[39m, in \u001B[36mload_model\u001B[39m\u001B[34m(filepath, custom_objects, compile, safe_mode)\u001B[39m\n\u001B[32m    189\u001B[39m     \u001B[38;5;28;01mreturn\u001B[39;00m saving_lib.load_model(\n\u001B[32m    190\u001B[39m         filepath,\n\u001B[32m    191\u001B[39m         custom_objects=custom_objects,\n\u001B[32m    192\u001B[39m         \u001B[38;5;28mcompile\u001B[39m=\u001B[38;5;28mcompile\u001B[39m,\n\u001B[32m    193\u001B[39m         safe_mode=safe_mode,\n\u001B[32m    194\u001B[39m     )\n\u001B[32m    195\u001B[39m \u001B[38;5;28;01mif\u001B[39;00m \u001B[38;5;28mstr\u001B[39m(filepath).endswith((\u001B[33m\"\u001B[39m\u001B[33m.h5\u001B[39m\u001B[33m\"\u001B[39m, \u001B[33m\"\u001B[39m\u001B[33m.hdf5\u001B[39m\u001B[33m\"\u001B[39m)):\n\u001B[32m--> \u001B[39m\u001B[32m196\u001B[39m     \u001B[38;5;28;01mreturn\u001B[39;00m \u001B[43mlegacy_h5_format\u001B[49m\u001B[43m.\u001B[49m\u001B[43mload_model_from_hdf5\u001B[49m\u001B[43m(\u001B[49m\n\u001B[32m    197\u001B[39m \u001B[43m        \u001B[49m\u001B[43mfilepath\u001B[49m\u001B[43m,\u001B[49m\n\u001B[32m    198\u001B[39m \u001B[43m        \u001B[49m\u001B[43mcustom_objects\u001B[49m\u001B[43m=\u001B[49m\u001B[43mcustom_objects\u001B[49m\u001B[43m,\u001B[49m\n\u001B[32m    199\u001B[39m \u001B[43m        \u001B[49m\u001B[38;5;28;43mcompile\u001B[39;49m\u001B[43m=\u001B[49m\u001B[38;5;28;43mcompile\u001B[39;49m\u001B[43m,\u001B[49m\n\u001B[32m    200\u001B[39m \u001B[43m        \u001B[49m\u001B[43msafe_mode\u001B[49m\u001B[43m=\u001B[49m\u001B[43msafe_mode\u001B[49m\u001B[43m,\u001B[49m\n\u001B[32m    201\u001B[39m \u001B[43m    \u001B[49m\u001B[43m)\u001B[49m\n\u001B[32m    202\u001B[39m \u001B[38;5;28;01melif\u001B[39;00m \u001B[38;5;28mstr\u001B[39m(filepath).endswith(\u001B[33m\"\u001B[39m\u001B[33m.keras\u001B[39m\u001B[33m\"\u001B[39m):\n\u001B[32m    203\u001B[39m     \u001B[38;5;28;01mraise\u001B[39;00m \u001B[38;5;167;01mValueError\u001B[39;00m(\n\u001B[32m    204\u001B[39m         \u001B[33mf\u001B[39m\u001B[33m\"\u001B[39m\u001B[33mFile not found: filepath=\u001B[39m\u001B[38;5;132;01m{\u001B[39;00mfilepath\u001B[38;5;132;01m}\u001B[39;00m\u001B[33m. \u001B[39m\u001B[33m\"\u001B[39m\n\u001B[32m    205\u001B[39m         \u001B[33m\"\u001B[39m\u001B[33mPlease ensure the file is an accessible `.keras` \u001B[39m\u001B[33m\"\u001B[39m\n\u001B[32m    206\u001B[39m         \u001B[33m\"\u001B[39m\u001B[33mzip file.\u001B[39m\u001B[33m\"\u001B[39m\n\u001B[32m    207\u001B[39m     )\n",
+      "\u001B[36mFile \u001B[39m\u001B[32m/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/keras/src/legacy/saving/legacy_h5_format.py:118\u001B[39m, in \u001B[36mload_model_from_hdf5\u001B[39m\u001B[34m(filepath, custom_objects, compile, safe_mode)\u001B[39m\n\u001B[32m    116\u001B[39m opened_new_file = \u001B[38;5;129;01mnot\u001B[39;00m \u001B[38;5;28misinstance\u001B[39m(filepath, h5py.File)\n\u001B[32m    117\u001B[39m \u001B[38;5;28;01mif\u001B[39;00m opened_new_file:\n\u001B[32m--> \u001B[39m\u001B[32m118\u001B[39m     f = \u001B[43mh5py\u001B[49m\u001B[43m.\u001B[49m\u001B[43mFile\u001B[49m\u001B[43m(\u001B[49m\u001B[43mfilepath\u001B[49m\u001B[43m,\u001B[49m\u001B[43m \u001B[49m\u001B[43mmode\u001B[49m\u001B[43m=\u001B[49m\u001B[33;43m\"\u001B[39;49m\u001B[33;43mr\u001B[39;49m\u001B[33;43m\"\u001B[39;49m\u001B[43m)\u001B[49m\n\u001B[32m    119\u001B[39m \u001B[38;5;28;01melse\u001B[39;00m:\n\u001B[32m    120\u001B[39m     f = filepath\n",
+      "\u001B[36mFile \u001B[39m\u001B[32m/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/h5py/_hl/files.py:564\u001B[39m, in \u001B[36mFile.__init__\u001B[39m\u001B[34m(self, name, mode, driver, libver, userblock_size, swmr, rdcc_nslots, rdcc_nbytes, rdcc_w0, track_order, fs_strategy, fs_persist, fs_threshold, fs_page_size, page_buf_size, min_meta_keep, min_raw_keep, locking, alignment_threshold, alignment_interval, meta_block_size, **kwds)\u001B[39m\n\u001B[32m    555\u001B[39m     fapl = make_fapl(driver, libver, rdcc_nslots, rdcc_nbytes, rdcc_w0,\n\u001B[32m    556\u001B[39m                      locking, page_buf_size, min_meta_keep, min_raw_keep,\n\u001B[32m    557\u001B[39m                      alignment_threshold=alignment_threshold,\n\u001B[32m    558\u001B[39m                      alignment_interval=alignment_interval,\n\u001B[32m    559\u001B[39m                      meta_block_size=meta_block_size,\n\u001B[32m    560\u001B[39m                      **kwds)\n\u001B[32m    561\u001B[39m     fcpl = make_fcpl(track_order=track_order, fs_strategy=fs_strategy,\n\u001B[32m    562\u001B[39m                      fs_persist=fs_persist, fs_threshold=fs_threshold,\n\u001B[32m    563\u001B[39m                      fs_page_size=fs_page_size)\n\u001B[32m--> \u001B[39m\u001B[32m564\u001B[39m     fid = \u001B[43mmake_fid\u001B[49m\u001B[43m(\u001B[49m\u001B[43mname\u001B[49m\u001B[43m,\u001B[49m\u001B[43m \u001B[49m\u001B[43mmode\u001B[49m\u001B[43m,\u001B[49m\u001B[43m \u001B[49m\u001B[43muserblock_size\u001B[49m\u001B[43m,\u001B[49m\u001B[43m \u001B[49m\u001B[43mfapl\u001B[49m\u001B[43m,\u001B[49m\u001B[43m \u001B[49m\u001B[43mfcpl\u001B[49m\u001B[43m,\u001B[49m\u001B[43m \u001B[49m\u001B[43mswmr\u001B[49m\u001B[43m=\u001B[49m\u001B[43mswmr\u001B[49m\u001B[43m)\u001B[49m\n\u001B[32m    566\u001B[39m \u001B[38;5;28;01mif\u001B[39;00m \u001B[38;5;28misinstance\u001B[39m(libver, \u001B[38;5;28mtuple\u001B[39m):\n\u001B[32m    567\u001B[39m     \u001B[38;5;28mself\u001B[39m._libver = libver\n",
+      "\u001B[36mFile \u001B[39m\u001B[32m/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/h5py/_hl/files.py:238\u001B[39m, in \u001B[36mmake_fid\u001B[39m\u001B[34m(name, mode, userblock_size, fapl, fcpl, swmr)\u001B[39m\n\u001B[32m    236\u001B[39m     \u001B[38;5;28;01mif\u001B[39;00m swmr \u001B[38;5;129;01mand\u001B[39;00m swmr_support:\n\u001B[32m    237\u001B[39m         flags |= h5f.ACC_SWMR_READ\n\u001B[32m--> \u001B[39m\u001B[32m238\u001B[39m     fid = \u001B[43mh5f\u001B[49m\u001B[43m.\u001B[49m\u001B[43mopen\u001B[49m\u001B[43m(\u001B[49m\u001B[43mname\u001B[49m\u001B[43m,\u001B[49m\u001B[43m \u001B[49m\u001B[43mflags\u001B[49m\u001B[43m,\u001B[49m\u001B[43m \u001B[49m\u001B[43mfapl\u001B[49m\u001B[43m=\u001B[49m\u001B[43mfapl\u001B[49m\u001B[43m)\u001B[49m\n\u001B[32m    239\u001B[39m \u001B[38;5;28;01melif\u001B[39;00m mode == \u001B[33m'\u001B[39m\u001B[33mr+\u001B[39m\u001B[33m'\u001B[39m:\n\u001B[32m    240\u001B[39m     fid = h5f.open(name, h5f.ACC_RDWR, fapl=fapl)\n",
+      "\u001B[36mFile \u001B[39m\u001B[32mh5py/_objects.pyx:56\u001B[39m, in \u001B[36mh5py._objects.with_phil.wrapper\u001B[39m\u001B[34m()\u001B[39m\n",
+      "\u001B[36mFile \u001B[39m\u001B[32mh5py/_objects.pyx:57\u001B[39m, in \u001B[36mh5py._objects.with_phil.wrapper\u001B[39m\u001B[34m()\u001B[39m\n",
+      "\u001B[36mFile \u001B[39m\u001B[32mh5py/h5f.pyx:102\u001B[39m, in \u001B[36mh5py.h5f.open\u001B[39m\u001B[34m()\u001B[39m\n",
+      "\u001B[31mFileNotFoundError\u001B[39m: [Errno 2] Unable to synchronously open file (unable to open file: name = 'overlap_multiclass_reg_non_bn.h5', errno = 2, error message = 'No such file or directory', flags = 0, o_flags = 0)"
+     ]
+    }
+   ],
+   "execution_count": 35
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 6,
+   "metadata": {},
+   "outputs": [
+    {
+     "ename": "NameError",
+     "evalue": "name 'model' is not defined",
+     "output_type": "error",
+     "traceback": [
+      "\u001B[31m---------------------------------------------------------------------------\u001B[39m",
+      "\u001B[31mNameError\u001B[39m                                 Traceback (most recent call last)",
+      "\u001B[36mCell\u001B[39m\u001B[36m \u001B[39m\u001B[32mIn[6]\u001B[39m\u001B[32m, line 2\u001B[39m\n\u001B[32m      1\u001B[39m \u001B[38;5;66;03m# Visualize weights\u001B[39;00m\n\u001B[32m----> \u001B[39m\u001B[32m2\u001B[39m W1 = \u001B[43mmodel\u001B[49m.layers[\u001B[32m0\u001B[39m].get_weights()[\u001B[32m0\u001B[39m]\n\u001B[32m      3\u001B[39m W1 = np.squeeze(W1)\n\u001B[32m      4\u001B[39m \u001B[38;5;66;03m# W1 = np.asarray(W1)\u001B[39;00m\n",
+      "\u001B[31mNameError\u001B[39m: name 'model' is not defined"
+     ]
+    }
+   ],
+   "source": [
+    "# Visualize weights\n",
+    "W1 = model.layers[0].get_weights()[0]\n",
+    "W1 = np.squeeze(W1)\n",
+    "# W1 = np.asarray(W1)\n",
+    "print(\"W1 shape : \", W1.shape)\n",
+    "\n",
+    "mosaic_imshow(W1, 2, 5, cmap=cm.binary, border=1, layer_name=\"conv1_weights_before\")\n",
+    "plotNNFilter(W1, 2, 5, cmap=cm.binary, layer_name=\"conv1_weights_before\")\n",
+    "plotNNFilter2(W1, 2, 5, cmap=cm.binary, layer_name=\"conv1_weights_before\")\n",
+    "\n",
+    "# Visualize weights\n",
+    "W2 = model.layers[3].get_weights()[0][:,:,0,:]\n",
+    "W2 = np.asarray(W2)\n",
+    "print(\"W2 shape : \", W2.shape)\n",
+    "\n",
+    "mosaic_imshow(W2, 4, 5, cmap=cm.binary, border=1, layer_name=\"conv2_weights_before\")\n",
+    "plotNNFilter(W2, 4, 5, cmap=cm.binary, layer_name=\"conv2_weights_before\")\n",
+    "plotNNFilter2(W2, 4, 5, cmap=cm.binary, layer_name=\"conv2_weights_before\")\n"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "### Fit model on training data"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 7,
+   "metadata": {},
+   "outputs": [
+    {
+     "ename": "NameError",
+     "evalue": "name 'TensorBoard' is not defined",
+     "output_type": "error",
+     "traceback": [
+      "\u001B[31m---------------------------------------------------------------------------\u001B[39m",
+      "\u001B[31mNameError\u001B[39m                                 Traceback (most recent call last)",
+      "\u001B[36mCell\u001B[39m\u001B[36m \u001B[39m\u001B[32mIn[7]\u001B[39m\u001B[32m, line 1\u001B[39m\n\u001B[32m----> \u001B[39m\u001B[32m1\u001B[39m tensorboard = \u001B[43mTensorBoard\u001B[49m(log_dir=\u001B[33m'\u001B[39m\u001B[33m./Graph\u001B[39m\u001B[33m'\u001B[39m, histogram_freq=\u001B[32m1\u001B[39m, write_grads=\u001B[38;5;28;01mTrue\u001B[39;00m, write_graph=\u001B[38;5;28;01mTrue\u001B[39;00m,\n\u001B[32m      2\u001B[39m                           write_images=\u001B[38;5;28;01mTrue\u001B[39;00m, batch_size=batch_size)\n\u001B[32m      3\u001B[39m checkpointer_loss = ModelCheckpoint(filepath= MODEL_NAME + \u001B[33m'\u001B[39m\u001B[33m_loss.hdf5\u001B[39m\u001B[33m'\u001B[39m, verbose=\u001B[32m1\u001B[39m, save_best_only=\u001B[38;5;28;01mTrue\u001B[39;00m, save_weights_only=\u001B[38;5;28;01mTrue\u001B[39;00m)\n\u001B[32m      4\u001B[39m checkpointer_acc = ModelCheckpoint(monitor=\u001B[33m'\u001B[39m\u001B[33mval_acc\u001B[39m\u001B[33m'\u001B[39m, filepath= MODEL_NAME + \u001B[33m'\u001B[39m\u001B[33m_acc.hdf5\u001B[39m\u001B[33m'\u001B[39m, verbose=\u001B[32m1\u001B[39m, save_best_only=\u001B[38;5;28;01mTrue\u001B[39;00m, save_weights_only=\u001B[38;5;28;01mTrue\u001B[39;00m)\n",
+      "\u001B[31mNameError\u001B[39m: name 'TensorBoard' is not defined"
+     ]
+    }
+   ],
+   "source": [
+    "tensorboard = TensorBoard(log_dir='./Graph', histogram_freq=1, write_grads=True, write_graph=True,\n",
+    "                          write_images=True, batch_size=batch_size)\n",
+    "checkpointer_loss = ModelCheckpoint(filepath= MODEL_NAME + '_loss.hdf5', verbose=1, save_best_only=True, save_weights_only=True)\n",
+    "checkpointer_acc = ModelCheckpoint(monitor='val_acc', filepath= MODEL_NAME + '_acc.hdf5', verbose=1, save_best_only=True, save_weights_only=True)\n",
+    "tensorboard.set_model(model)\n",
+    "\n",
+    "def generator(features, labels, batch_size):\n",
+    "    index = 0\n",
+    "    while True:\n",
+    "        index += batch_size\n",
+    "        if index >= len(features):\n",
+    "            batch_features = np.append(features[index-batch_size:len(features)], features[0:index-len(features)], axis=0)\n",
+    "            batch_labels = np.append(labels[index-batch_size:len(features)], labels[0:index-len(features)], axis=0)\n",
+    "            index -= len(features)\n",
+    "            yield batch_features, batch_labels\n",
+    "        else:\n",
+    "            yield features[index-batch_size:index], labels[index-batch_size:index]\n",
+    "\n",
+    "history = model.fit_generator(generator(x_train, y_train, batch_size),\n",
+    "          epochs=epochs,\n",
+    "          samples_per_epoch=samples_per_epoch,\n",
+    "          verbose=1,\n",
+    "          callbacks=[tensorboard,checkpointer_loss,checkpointer_acc],\n",
+    "          validation_data=(x_val, y_val))"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "### Plot history accuracy"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 8,
+   "metadata": {},
+   "outputs": [
+    {
+     "ename": "NameError",
+     "evalue": "name 'MODEL_NAME' is not defined",
+     "output_type": "error",
+     "traceback": [
+      "\u001B[31m---------------------------------------------------------------------------\u001B[39m",
+      "\u001B[31mNameError\u001B[39m                                 Traceback (most recent call last)",
+      "\u001B[36mCell\u001B[39m\u001B[36m \u001B[39m\u001B[32mIn[8]\u001B[39m\u001B[32m, line 4\u001B[39m\n\u001B[32m      1\u001B[39m \u001B[38;5;28;01mimport\u001B[39;00m\u001B[38;5;250m \u001B[39m\u001B[34;01mmatplotlib\u001B[39;00m\u001B[34;01m.\u001B[39;00m\u001B[34;01mpyplot\u001B[39;00m\u001B[38;5;250m \u001B[39m\u001B[38;5;28;01mas\u001B[39;00m\u001B[38;5;250m \u001B[39m\u001B[34;01mplt\u001B[39;00m\n\u001B[32m      2\u001B[39m \u001B[38;5;28;01mimport\u001B[39;00m\u001B[38;5;250m \u001B[39m\u001B[34;01mpickle\u001B[39;00m\n\u001B[32m----> \u001B[39m\u001B[32m4\u001B[39m \u001B[38;5;28;01mwith\u001B[39;00m \u001B[38;5;28mopen\u001B[39m(\u001B[43mMODEL_NAME\u001B[49m +  \u001B[33m\"\u001B[39m\u001B[33m_accuracy.pkl\u001B[39m\u001B[33m\"\u001B[39m, \u001B[33m'\u001B[39m\u001B[33mwb\u001B[39m\u001B[33m'\u001B[39m) \u001B[38;5;28;01mas\u001B[39;00m output:\n\u001B[32m      5\u001B[39m     pickle.dump(history.history, output, pickle.HIGHEST_PROTOCOL)\n\u001B[32m      7\u001B[39m \u001B[38;5;66;03m# list all data in history\u001B[39;00m\n",
+      "\u001B[31mNameError\u001B[39m: name 'MODEL_NAME' is not defined"
+     ]
+    }
+   ],
+   "source": [
+    "import matplotlib.pyplot as plt\n",
+    "import pickle\n",
+    "\n",
+    "with open(MODEL_NAME +  \"_accuracy.pkl\", 'wb') as output:\n",
+    "    pickle.dump(history.history, output, pickle.HIGHEST_PROTOCOL)\n",
+    "\n",
+    "# list all data in history\n",
+    "print(history.history.keys())\n",
+    "x = np.asarray(range(1,epochs + 1))\n",
+    "# summarize history for accuracy\n",
+    "plt.figure()\n",
+    "plt.plot(x, history.history['acc'])\n",
+    "plt.plot(x, history.history['val_acc'])\n",
+    "plt.title('model accuracy')\n",
+    "plt.ylabel('accuracy')\n",
+    "plt.xlabel('epoch')\n",
+    "plt.legend(['train', 'val'], loc='upper left')\n",
+    "plt.savefig(MODEL_NAME +  \" accuracy history\", bbox_inches='tight', pad_inches=1)\n",
+    "plt.show()"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "### Plot Confusion Matrix"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 9,
+   "metadata": {},
+   "outputs": [
+    {
+     "ename": "NameError",
+     "evalue": "name 'model' is not defined",
+     "output_type": "error",
+     "traceback": [
+      "\u001B[31m---------------------------------------------------------------------------\u001B[39m",
+      "\u001B[31mNameError\u001B[39m                                 Traceback (most recent call last)",
+      "\u001B[36mCell\u001B[39m\u001B[36m \u001B[39m\u001B[32mIn[9]\u001B[39m\u001B[32m, line 1\u001B[39m\n\u001B[32m----> \u001B[39m\u001B[32m1\u001B[39m y_val_prediction = \u001B[43mmodel\u001B[49m.predict_classes(x_val, verbose=\u001B[32m1\u001B[39m)\n",
+      "\u001B[31mNameError\u001B[39m: name 'model' is not defined"
+     ]
+    }
+   ],
+   "source": [
+    "y_val_prediction = model.predict_classes(x_val, verbose=1)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 10,
+   "metadata": {},
+   "outputs": [
+    {
+     "ename": "NameError",
+     "evalue": "name 'y_val_prediction' is not defined",
+     "output_type": "error",
+     "traceback": [
+      "\u001B[31m---------------------------------------------------------------------------\u001B[39m",
+      "\u001B[31mNameError\u001B[39m                                 Traceback (most recent call last)",
+      "\u001B[36mCell\u001B[39m\u001B[36m \u001B[39m\u001B[32mIn[10]\u001B[39m\u001B[32m, line 1\u001B[39m\n\u001B[32m----> \u001B[39m\u001B[32m1\u001B[39m \u001B[38;5;28mprint\u001B[39m(\u001B[43my_val_prediction\u001B[49m[:\u001B[32m10\u001B[39m])\n",
+      "\u001B[31mNameError\u001B[39m: name 'y_val_prediction' is not defined"
+     ]
+    }
+   ],
+   "source": [
+    "print(y_val_prediction[:10])"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 11,
+   "metadata": {},
+   "outputs": [
+    {
+     "ename": "NameError",
+     "evalue": "name 'y_val_true' is not defined",
+     "output_type": "error",
+     "traceback": [
+      "\u001B[31m---------------------------------------------------------------------------\u001B[39m",
+      "\u001B[31mNameError\u001B[39m                                 Traceback (most recent call last)",
+      "\u001B[36mCell\u001B[39m\u001B[36m \u001B[39m\u001B[32mIn[11]\u001B[39m\u001B[32m, line 46\u001B[39m\n\u001B[32m     43\u001B[39m     plt.savefig(fname, bbox_inches=\u001B[33m'\u001B[39m\u001B[33mtight\u001B[39m\u001B[33m'\u001B[39m, pad_inches=\u001B[32m1\u001B[39m)\n\u001B[32m     45\u001B[39m \u001B[38;5;66;03m# Compute confusion matrix\u001B[39;00m\n\u001B[32m---> \u001B[39m\u001B[32m46\u001B[39m cnf_matrix = confusion_matrix(\u001B[43my_val_true\u001B[49m, y_val_prediction)\n\u001B[32m     47\u001B[39m np.set_printoptions(precision=\u001B[32m2\u001B[39m)\n\u001B[32m     49\u001B[39m \u001B[38;5;66;03m# Plot non-normalized confusion matrix\u001B[39;00m\n",
+      "\u001B[31mNameError\u001B[39m: name 'y_val_true' is not defined"
+     ]
+    }
+   ],
+   "source": [
+    "from sklearn.metrics import confusion_matrix\n",
+    "import itertools\n",
+    "\n",
+    "def plot_confusion_matrix(cm, classes,\n",
+    "                          normalize=False,\n",
+    "                          title='Confusion matrix',\n",
+    "                          fname='Confusion matrix',\n",
+    "                          cmap=plt.cm.Blues):\n",
+    "    \"\"\"\n",
+    "    This function prints and plots the confusion matrix.\n",
+    "    Normalization can be applied by setting `normalize=True`.\n",
+    "    \"\"\"\n",
+    "    if normalize:\n",
+    "        cm = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis]\n",
+    "        print(\"Normalized confusion matrix\")\n",
+    "    else:\n",
+    "        print('Confusion matrix, without normalization')\n",
+    "\n",
+    "    print(cm)\n",
+    "\n",
+    "    plt.imshow(cm, interpolation='nearest', cmap=cmap)\n",
+    "    plt.title(title)\n",
+    "    plt.colorbar()\n",
+    "    tick_marks = np.arange(len(classes))\n",
+    "    plt.xticks(tick_marks, classes, rotation=45)\n",
+    "    plt.yticks(tick_marks, classes)\n",
+    "\n",
+    "    fmt = '.1f' if normalize else 'd'\n",
+    "    thresh = cm.max() / 2.\n",
+    "    for i, j in itertools.product(range(cm.shape[0]), range(cm.shape[1])):\n",
+    "        if normalize:\n",
+    "            plt.text(j, i, format(cm[i, j]*100, fmt) + '%',\n",
+    "                 horizontalalignment=\"center\",\n",
+    "                 color=\"white\" if cm[i, j] > thresh else \"black\")\n",
+    "        else:\n",
+    "            plt.text(j, i, format(cm[i, j], fmt),\n",
+    "                 horizontalalignment=\"center\",\n",
+    "                 color=\"white\" if cm[i, j] > thresh else \"black\")    \n",
+    "        \n",
+    "    plt.tight_layout()\n",
+    "    plt.ylabel('True label')\n",
+    "    plt.xlabel('Predicted label')\n",
+    "    plt.savefig(fname, bbox_inches='tight', pad_inches=1)\n",
+    "\n",
+    "# Compute confusion matrix\n",
+    "cnf_matrix = confusion_matrix(y_val_true, y_val_prediction)\n",
+    "np.set_printoptions(precision=2)\n",
+    "\n",
+    "# Plot non-normalized confusion matrix\n",
+    "plt.figure()\n",
+    "plot_confusion_matrix(cnf_matrix, classes=class_names,\n",
+    "                      title='Confusion matrix, without normalization',\n",
+    "                      fname=MODEL_NAME + \"_\" + 'Confusion_matrix_without_normalization')\n",
+    "\n",
+    "# Plot normalized confusion matrix\n",
+    "plt.figure()\n",
+    "plot_confusion_matrix(cnf_matrix, classes=class_names, normalize=True,\n",
+    "                      title='Normalized confusion matrix',\n",
+    "                      fname=MODEL_NAME + \"_\" + 'Normalized_confusion_matrix')\n",
+    "\n",
+    "plt.show()"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "def stats(y_true, y_pred):\n",
+    "    correct = sum([1 for i,pred in enumerate(y_pred) if y_true[i][pred]==1])\n",
+    "    print(y_true.shape[0], correct, correct*1.0/len(y_true))\n",
+    "    \n",
+    "    for class_ind in range(y_true.shape[1]):\n",
+    "        total_ind = len([1 for val in y_true if val[class_ind]==1])\n",
+    "        correct_ind = sum([1 for i,pred in enumerate(y_pred) if (pred == class_ind and y_true[i][pred]==1)])\n",
+    "        print(class_ind, total_ind, correct_ind, correct_ind*1.0/total_ind)\n",
+    "\n",
+    "stats(y_val, y_val_prediction)\n",
+    "# stats(y_test_vpn, y_test_vpn_prediction)\n",
+    "# stats(y_test_tor, y_test_tor_prediction)\n",
+    "# correct_1 = sum([1 for i,pred in enumerate(y_test_prediction) if (pred == 1 and y_test[i][pred]==1)])\n",
+    "# print correct_1, correct_1*1.0/len([1 for val in y_test if val[1]==1])"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "from sklearn.metrics import classification_report\n",
+    "print(classification_report(y_val_true, y_val_prediction))"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# Visualize the first layer of convolutions on an input image\n",
+    "X = x_train[i][0]\n",
+    "print(X)\n",
+    "print(y_train_true[i])\n",
+    "pl.figure(figsize=(15, 15))\n",
+    "nice_imshow(pl.gca(), np.squeeze(X), vmin=0, vmax=1, cmap=cm.binary)\n",
+    "pl.savefig(MODEL_NAME +  \"_input_\" + str(int(y_train_true[i])), bbox_inches='tight', pad_inches=1)\n",
+    "pl.show()\n",
+    "\n",
+    "# Visualize convolution result (after activation)\n",
+    "def get_layer_output(layer, input_img, layer_name):\n",
+    "    convout_f = K.function(model.inputs, [layer.output])\n",
+    "    C = convout_f([input_img])\n",
+    "    C = np.squeeze(C)\n",
+    "    print(layer_name + \" output shape : \", C.shape)\n",
+    "    C = np.transpose(C)\n",
+    "    C = np.swapaxes(C,0,1)\n",
+    "    print(layer_name + \" output shape : \", C.shape)\n",
+    "    return C\n",
+    "\n",
+    "\n",
+    "C1 = get_layer_output(convout1, x_train[i:i+1], layer_name=\"convout1_\" + str(int(y_train_true[i])))\n",
+    "mosaic_imshow(C1, 2, 5, cmap=cm.binary, border=2, layer_name=\"convout1_\" + str(int(y_train_true[i])))\n",
+    "plotNNFilter(C1, 2, 5, cmap=cm.binary, layer_name=\"convout1_\" + str(int(y_train_true[i])))\n",
+    "plotNNFilter2(C1, 2, 5, cmap=cm.binary, layer_name=\"convout1_\" + str(int(y_train_true[i])))\n",
+    "\n",
+    "C2 = get_layer_output(convout2, x_train[i:i+1], layer_name=\"convout2_\" + str(int(y_train_true[i])))\n",
+    "mosaic_imshow(C2, 4, 5, cmap=cm.binary, border=2, layer_name=\"convout2_\" + str(int(y_train_true[i])))\n",
+    "plotNNFilter(C2, 4, 5, cmap=cm.binary, layer_name=\"convout2_\" + str(int(y_train_true[i])))\n",
+    "plotNNFilter2(C2, 4, 5, cmap=cm.binary, layer_name=\"convout2_\" + str(int(y_train_true[i])))"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# Visualize weights\n",
+    "W1 = model.layers[0].get_weights()[0]\n",
+    "W1 = np.squeeze(W1)\n",
+    "# W1 = np.asarray(W1)\n",
+    "print(\"W1 shape : \", W1.shape)\n",
+    "\n",
+    "mosaic_imshow(W1, 2, 5, cmap=cm.binary, border=1, layer_name=\"conv1_weights\")\n",
+    "plotNNFilter(W1, 2, 5, cmap=cm.binary, layer_name=\"conv1_weights\")\n",
+    "plotNNFilter2(W1, 2, 5, cmap=cm.binary, layer_name=\"conv1_weights\")\n",
+    "\n",
+    "# Visualize weights\n",
+    "W2 = model.layers[3].get_weights()[0][:,:,0,:]\n",
+    "W2 = np.asarray(W2)\n",
+    "print(\"W2 shape : \", W2.shape)\n",
+    "\n",
+    "mosaic_imshow(W2, 4, 5, cmap=cm.binary, border=1, layer_name=\"conv2_weights\")\n",
+    "plotNNFilter(W2, 4, 5, cmap=cm.binary, layer_name=\"conv2_weights\")\n",
+    "plotNNFilter2(W2, 4, 5, cmap=cm.binary, layer_name=\"conv2_weights\")\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "y_val_true, y_val_prediction\n",
+    "\n",
+    "for j in range(len(y_val_true)):\n",
+    "    if y_val_true[j] == 0 and y_val_prediction[j] == 1:\n",
+    "        print(j, sum(sum(sum(x_val[j]))))\n",
+    "#         pl.figure(figsize=(10, 10))\n",
+    "#         pl.title('input ' + str(j))\n",
+    "#         nice_imshow(pl.gca(), np.squeeze(x_val[j]), vmin=0, vmax=1, cmap=cm.binary)\n",
+    "#         pl.savefig(MODEL_NAME +  \"_input\", bbox_inches='tight', pad_inches=1)\n",
+    "#         pl.show()"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "### Import test data"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "x_test_vpn = np.load(PATH_PREFIX + \"vpn_x_test.npy\")\n",
+    "y_test_vpn_true = np.load(PATH_PREFIX + \"vpn_y_test.npy\")\n",
+    "x_test_tor = np.load(PATH_PREFIX + \"tor_x_test.npy\")\n",
+    "y_test_tor_true = np.load(PATH_PREFIX + \"tor_y_test.npy\")\n",
+    "\n",
+    "y_test_vpn =to_categorical(y_test_vpn_true, num_classes)\n",
+    "y_test_tor =to_categorical(y_test_tor_true, num_classes)\n",
+    "\n",
+    "print(x_test_vpn.shape, y_test_vpn.shape)\n",
+    "print(x_test_tor.shape, y_test_tor.shape)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "### Evaluate model on test data"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# model.load_weights(MODEL_NAME + '.hdf5')\n",
+    "\n",
+    "score_val = model.evaluate(x_val, y_val, verbose=1)\n",
+    "print('Validation loss:', score_val[0])\n",
+    "print('Validaion accuracy:', score_val[1])\n",
+    "print('Validaion top_2_categorical_accuracy:', score_val[2])\n",
+    "\n",
+    "score_vpn = model.evaluate(x_test_vpn, y_test_vpn, verbose=1)\n",
+    "print('VPN_Test loss:', score_vpn[0])\n",
+    "print('VPN_Test accuracy:', score_vpn[1])\n",
+    "print('VPN_Test top_2_categorical_accuracy:', score_vpn[2])\n",
+    "\n",
+    "score_tor = model.evaluate(x_test_tor, y_test_tor, verbose=1)\n",
+    "print('TOR_Test loss:', score_tor[0])\n",
+    "print('TOR_Test accuracy:', score_tor[1])\n",
+    "print('TOR_Test top_2_categorical_accuracy:', score_tor[2])"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "y_test_vpn_prediction = model.predict_classes(x_test_vpn, verbose=1)\n",
+    "y_test_tor_prediction = model.predict_classes(x_test_tor, verbose=1)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "cnf_matrix_val = confusion_matrix(y_val_true, y_val_prediction)\n",
+    "cnf_matrix_vpn = confusion_matrix(y_test_vpn_true, y_test_vpn_prediction)\n",
+    "cnf_matrix_tor = confusion_matrix(y_test_tor_true, y_test_tor_prediction)\n",
+    "\n",
+    "# Plot normalized confusion matrix\n",
+    "plt.figure()\n",
+    "plot_confusion_matrix(cnf_matrix_val, classes=class_names, normalize=True,\n",
+    "                      title='Normalized confusion matrix for regular validation set',\n",
+    "                      fname=MODEL_NAME + \"_val_\" + 'Normalized_confusion_matrix')\n",
+    "\n",
+    "# Plot normalized confusion matrix\n",
+    "plt.figure()\n",
+    "plot_confusion_matrix(cnf_matrix_vpn, classes=class_names, normalize=True,\n",
+    "                      title='Normalized confusion matrix for vpn test set',\n",
+    "                      fname=MODEL_NAME + \"_test_vpn_\" + 'Normalized_confusion_matrix')\n",
+    "\n",
+    "# Plot normalized confusion matrix\n",
+    "plt.figure()\n",
+    "plot_confusion_matrix(cnf_matrix_tor, classes=class_names, normalize=True,\n",
+    "                      title='Normalized confusion matrix for tor test set',\n",
+    "                      fname=MODEL_NAME + \"_test_tor_\" + 'Normalized_confusion_matrix')\n",
+    "\n",
+    "plt.show()"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "### Save Model and weights"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "model_json = model.to_json()\n",
+    "with open(MODEL_NAME + '.json', \"w\") as json_file:\n",
+    "    json_file.write(model_json)\n",
+    "model.save_weights(MODEL_NAME + '.h5')\n",
+    "print(\"Save Model\")"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": []
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": []
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": []
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": []
+  }
+ ],
+ "metadata": {
+  "kernelspec": {
+   "display_name": "Python 3 (ipykernel)",
+   "language": "python",
+   "name": "python3"
+  },
+  "language_info": {
+   "codemirror_mode": {
+    "name": "ipython",
+    "version": 3
+   },
+   "file_extension": ".py",
+   "mimetype": "text/x-python",
+   "name": "python",
+   "nbconvert_exporter": "python",
+   "pygments_lexer": "ipython3",
+   "version": "3.13.3"
+  }
+ },
+ "nbformat": 4,
+ "nbformat_minor": 4
+}
