@@ -1,6 +1,7 @@
 import os
 import numpy as np
-import tensorflow as tf
+
+
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Input, Dense, Dropout, Flatten, Conv2D, MaxPooling2D
 from tensorflow.keras.utils import to_categorical
@@ -16,32 +17,48 @@ print("Keras backend:", K.backend(), "Image data format:", K.image_data_format()
 # --- Parameters ---
 batch_size = 128       # smaller batch size to avoid memory issues
 epochs = 40           # start small; you can increase later
-num_classes = 5
-class_names = ["voip", "video", "file", "chat", "browsing"]
+
+
 height, width = 1500, 1500
 input_shape = (height, width, 1)
 MODEL_NAME = "overlap_multiclass_reg_non_bn"
 PATH_PREFIX = "datasets/"
+class_names = ["voip", "video", "file_transfer", "chat", "browsing"]
+num_classes = len(class_names)
 
-# --- Load Dataset ---
-dataset_file = os.path.join(PATH_PREFIX, "file_vs_all_reg.npz")
-dataset = np.load(dataset_file)
-x_train = dataset['x_train']
-y_train_true = dataset['y_train']
-x_val = dataset['x_val']
-y_val_true = dataset['y_val']
+x_list = []
+y_list = []
 
-# --- Ensure correct format ---
-if x_train.shape[1] == 1:  # channels_first
-    x_train = x_train.transpose(0, 2, 3, 1)
-    x_val = x_val.transpose(0, 2, 3, 1)
-x_train = x_train.astype(np.float32)
-x_val = x_val.astype(np.float32)
+for idx, class_name in enumerate(class_names):
+    file_path = os.path.join(PATH_PREFIX, f"{class_name}.npz")
+    data = np.load(file_path)
+    x_class = data['x']  # or the correct key in your file
+    n_samples = x_class.shape[0]
+    y_class = np.full(n_samples, idx)
 
-print("Loaded dataset shapes:")
-print("x_train:", x_train.shape, "y_train_true:", y_train_true.shape)
-print("x_val:", x_val.shape, "y_val_true:", y_val_true.shape)
+    x_list.append(x_class)
+    y_list.append(y_class)
 
+# Merge all classes
+x_all = np.concatenate(x_list, axis=0)
+y_all = np.concatenate(y_list, axis=0)
+
+# Shuffle
+perm = np.random.permutation(x_all.shape[0])
+x_all = x_all[perm]
+y_all = y_all[perm]
+
+# Split into train/val (e.g., 80/20)
+split_idx = int(0.8 * x_all.shape[0])
+x_train, x_val = x_all[:split_idx], x_all[split_idx:]
+y_train_true, y_val_true = y_all[:split_idx], y_all[split_idx:]
+
+# One-hot encode
+y_train = to_categorical(y_train_true, num_classes)
+y_val = to_categorical(y_val_true, num_classes)
+
+print("x_train:", x_train.shape, "y_train:", y_train.shape)
+print("x_val:", x_val.shape, "y_val:", y_val.shape)
 # --- Shuffle data ---
 def shuffle_data(x, y):
     s = np.arange(x.shape[0])
