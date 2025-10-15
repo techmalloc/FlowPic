@@ -14,10 +14,10 @@ K.set_image_data_format('channels_last')
 print("Keras backend:", K.backend(), "Image data format:", K.image_data_format())
 
 # --- Parameters ---
-batch_size = 1       # smaller batch size to avoid memory issues
-epochs = 1           # start small; you can increase later
-num_classes = 2
-class_names = ["voip", "video"]
+batch_size = 128       # smaller batch size to avoid memory issues
+epochs = 40           # start small; you can increase later
+num_classes = 5
+class_names = ["voip", "video", "file", "chat", "browsing"]
 height, width = 1500, 1500
 input_shape = (height, width, 1)
 MODEL_NAME = "overlap_multiclass_reg_non_bn"
