@@ -30,7 +30,7 @@ x_list = []
 y_list = []
 
 for idx, class_name in enumerate(class_names):
-    file_path = os.path.join(PATH_PREFIX, f"{class_name}.npz")
+    file_path = os.path.join(PATH_PREFIX, f"{class_name}_vs_all_reg.npz")
     data = np.load(file_path)
     x_class = data['x']  # or the correct key in your file
     n_samples = x_class.shape[0]
