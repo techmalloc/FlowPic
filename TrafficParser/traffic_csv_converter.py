@@ -11,9 +11,9 @@ import glob
 import re
 
 FLAGS = None
-INPUT = "../raw_csvs/classes/browsing/reg/CICNTTor_browsing.raw.csv"#"../dataset/iscxNTVPN2016/CompletePCAPs" # ""
-INPUT_DIR = "../raw_csvs/classes/chat/vpn/"
-CLASSES_DIR = "../raw_csvs/classes/**/**/"
+INPUT = "../raw_csvs/classes_csvs/browsing/reg/CICNTTor_browsing.raw.csv"#"../dataset/iscxNTVPN2016/CompletePCAPs" # ""
+INPUT_DIR = "../raw_csvs/classes_csvs/chat/vpn/"
+CLASSES_DIR = "../raw_csvs/classes_csvs/**/**/"
 
 # LABEL_IND = 1
 TPS = 60 # TimePerSession in secs
@@ -184,14 +184,14 @@ if __name__ == '__main__':
 
     FLAGS = parser.parse_args()
     ##
-    # iterate_all_classes()
+    iterate_all_classes()
 
-    # dataset = traffic_class_converter(INPUT_DIR)
-    # dataset = traffic_csv_converter(INPUT)
+    dataset = traffic_class_converter(INPUT_DIR)
+    #dataset = traffic_csv_converter(INPUT)
 
-    input_array = "../raw_csvs/classes/browsing/reg/browsing_reg.npy"
+    input_array = "../raw_csvs/classes_csvs/browsing/reg/browsing_reg.npy"
     random_sampling_dataset(input_array)
 
 
-    # export_class_dataset(dataset)
-    # import_dataset()
+    export_dataset(dataset)
+    import_dataset()

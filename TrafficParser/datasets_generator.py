@@ -8,14 +8,14 @@ import numpy as np
 # from sklearn.cross_validation import train_test_split
 from sklearn.model_selection import train_test_split
 
-CLASS = "browsing"
+CLASS = "voip"
 TEST_SIZE = 0.1
 DATASET_DIR = "../datasets/"
 
 VPN_TYPES = {
-    "reg": glob.glob("../raw_csvs/classes/**/reg/*.npy"),
-    "vpn": glob.glob("../raw_csvs/classes/**/vpn/*.npy"),
-    "tor": glob.glob("../raw_csvs/classes/**/tor/*.npy")
+    "reg": glob.glob("../raw_csvs/classes_csvs/**/reg/*.npy"),
+    "vpn": glob.glob("../raw_csvs/classes_csvs/**/vpn/*.npy"),
+    "tor": glob.glob("../raw_csvs/classes_csvs/**/tor/*.npy")
 }
 
 
@@ -27,11 +27,7 @@ def import_array(input_array):
 
 
 def export_dataset(dataset_dict, file_path):
-    # with open(file_path + ".pkl", 'wb') as outfile:
-    #     pickle.dump(dataset_list, outfile, pickle.HIGHEST_PROTOCOL)
-    for name, array in dataset_dict.items():
-        np.save(file_path + "_" + name, array)
-
+    np.savez_compressed(file_path, **dataset_dict)
 
 def create_class_vs_all_specific_vpn_type_dataset(class_name, vpn_type="reg", validation=False, ratio=1.2):
     class_array_file = [fn for fn in VPN_TYPES[vpn_type] if class_name in fn and "overlap" not in fn][0]
@@ -82,6 +78,6 @@ def create_class_vs_all_specific_vpn_type_dataset(class_name, vpn_type="reg", va
 
 
 if __name__ == '__main__':
-    # create_class_vs_all_specific_vpn_type_dataset(CLASS, validation=True)
-    # create_class_vs_all_specific_vpn_type_dataset(CLASS, vpn_type="vpn", validation=False)
-    create_class_vs_all_specific_vpn_type_dataset(CLASS, vpn_type="tor", validation=False)
+  #  create_class_vs_all_specific_vpn_type_dataset(CLASS, validation=True)
+   create_class_vs_all_specific_vpn_type_dataset(CLASS,  validation=True)
+   #  create_class_vs_all_specific_vpn_type_dataset(CLASS, vpn_type="tor", validation=False)
